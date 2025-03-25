@@ -1,0 +1,66 @@
+<?
+#echo ((isset($_SERVER['HTTPS']) && ($_SERVER['HTTPS'] == 'on' || $_SERVER['HTTPS'] == 1)) || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https')) ? '_self' : '_blank';
+#var_dump($_SERVER['HTTPS']);
+#'target' => stripos($_SERVER['SERVER_PROTOCOL'],'https') === 0 ? '_self' : '_blank'
+if (isset($_SERVER['REMOTE_USER'])) $_SESSION['ad_login']=$_SERVER['REMOTE_USER'];
+if (isset($_SERVER['REDIRECT_REMOTE_USER'])) $_SESSION['ad_login']=$_SERVER['REDIRECT_REMOTE_USER'];
+
+if ($_SESSION['ad_login']==null or empty($_SESSION['ad_login'])) {
+header_remove('WWW-Authenticate');
+header('HTTP/1.0 401 Unauthorized',true,401);
+header('WWW-Authenticate: NTLM');
+exit;
+}
+if (!in_array(strtolower($_SESSION['ad_login']),array('oleksandr.strelnyk','igor.tomashivskiy','sergiy.kolisnichenko','konstantin.dovbnya','sergiy.udodov','oleksii.korol'),true)) { echo strtolower($_SESSION['ad_login']).':Not access!'; exit; }
+
+ include_once $_SERVER["DOCUMENT_ROOT"] . "/common2/getLogin.php";
+ include_once "./app_cfg.php";
+
+?>
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta HTTP-EQUIV="CACHE-CONTROL" CONTENT="no-store, no-cache, must-revalidate" />
+
+  <meta http-equiv="cache-control" content="max-age=0" />
+  <meta http-equiv="cache-control" content="no-cache" />
+  <meta http-equiv="cache-control" content="private" />
+
+  <meta http-equiv="expires" content="0" />
+  <meta http-equiv="pragma" content="no-cache" />
+
+  <link rel="stylesheet" type="text/css" href="../../../js/extJS/resources/css/ext-all.css">
+  <link rel="stylesheet" type="text/css" href="css/main.css">
+
+  <script type="text/javascript" src="../../../js/extJS/adapter/ext/ext-base.js"></script>
+  <script type="text/javascript" src="../../../js/extJS/ext-all-debug.js"></script>
+  <script type="text/javascript" src="../../../js/highcharts.js"></script>
+  <script type="text/javascript" src="../../../js/Ext.ux.HighChart.js"></script>
+  <script type="text/javascript" src="./wizard/lib/cable_lenght.js"></script>
+
+  <script type="text/javascript">
+    function show_wizards() {
+
+      var w = new CableLenght();
+      w.initWizard({ 'objectId': { 'key': 'locd', 'id': '23341' } });
+
+    };
+    function show_tools() {
+
+      // var w=new wEIC();
+      // w.show();
+
+    };
+  </script>
+
+  <title>Kyivstar GSM : test Wizard</title>
+</head>
+
+<body onload="setTimeout(show_wizards(), 1000);">
+</body>
+
+</html>
