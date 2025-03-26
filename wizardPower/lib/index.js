@@ -1,6 +1,9 @@
 Ext.onReady(function () {
     Ext.QuickTips.init();
 
+    var primary_key_col = 'LOCATIONID';
+    var is_update = 1;
+
     // Fetch enumeration data first
     Ext.Ajax.request({
         url: './tools/wizardPower/src/index.php',
@@ -33,36 +36,48 @@ Ext.onReady(function () {
 
                     if (res.success) {
                         var dynamicFields = res.data.map(col => col.COLUMN_NAME);
-
-                        // Create store with dynamic fields
                         var grid_store = new Ext.data.JsonStore({
                             root: 'data',
                             baseParams: { action: 'get_data' },
                             url: './tools/wizardPower/src/index.php',
                             fields: dynamicFields,
                             listeners: {
-                                load: function () {
+                                load: function (store, records) {
                                     Ext.getCmp('main_grid').getView().refresh();
+
+                                    // If no records, add an empty row and show all columns
+                                    var colModel = Ext.getCmp('main_grid').getColumnModel();
+                                    if (Ext.getCmp('search_field').getValue() == '') {
+                                        if (records.length === 0) {
+                                            store.add(new Ext.data.Record({}));
+                                            colModel.setHidden(colModel.findColumnIndex(primary_key_col), false);
+                                            is_update = 0;
+                                        } else {
+                                            colModel.setHidden(colModel.findColumnIndex(primary_key_col), true);
+                                            is_update = 1;
+                                        }
+                                    }
                                 }
                             }
                         });
 
                         // Generate dynamic columns
-                        var dynamicColumns = res.data.map((col, index) => ({
+                        var dynamicColumns = res.data.map(col => ({
                             header: col.COLUMN_NAME.replace(/_/g, ' '), // Format headers
                             dataIndex: col.COLUMN_NAME,
-                            width: 160,
-                            editor: col.DATA_TYPE === "DATE" ? null :
-                                (enumMap[col.COLUMN_NAME] ? { // If field has enumeration, use combo box
-                                    xtype: 'combo',
-                                    store: enumStores[col.COLUMN_NAME],
-                                    displayField: 'value',
-                                    valueField: 'key',
-                                    mode: 'local',
-                                    triggerAction: 'all',
-                                    editable: false
-                                } : { xtype: 'textfield' }), // Default to text field
-                            hidden: index === 0, // Hide first column dynamically
+                            width: 120,
+                            editor: col.COLUMN_NAME === "NAME" ? null :  // Make "NAME" column non-editable
+                                col.DATA_TYPE === "DATE" ? null :
+                                    (enumMap[col.COLUMN_NAME] ? { // If field has enumeration, use combo box
+                                        xtype: 'combo',
+                                        store: enumStores[col.COLUMN_NAME],
+                                        displayField: 'value',
+                                        valueField: 'key',
+                                        mode: 'local',
+                                        triggerAction: 'all',
+                                        editable: false
+                                    } : { xtype: 'textfield' }), // Default to text field
+                            hidden: false, // Default: Show all columns
                             renderer: enumMap[col.COLUMN_NAME] ?
                                 function (value) { return enumMap[col.COLUMN_NAME][value] || value; } : null // Show readable value
                         }));
@@ -74,6 +89,7 @@ Ext.onReady(function () {
 
                                 // Create a search field above the grid
                                 var searchField = new Ext.form.TextField({
+                                    id: 'search_field',
                                     fieldLabel: 'Search',
                                     width: 290,
                                     enableKeyEvents: true,
@@ -160,6 +176,7 @@ Ext.onReady(function () {
                                                     url: './tools/wizardPower/src/index.php',
                                                     params: {
                                                         'action': 'save_data',
+                                                        'is_update': is_update,
                                                         data: Ext.encode(Ext.pluck(grid_store.getModifiedRecords(), 'data'))
                                                     },
                                                     success: function (result) {
@@ -191,7 +208,7 @@ Ext.onReady(function () {
                                                 if (res.success) {
                                                     main_id = cfg.objectId.id;
                                                     grid_store.load({ params: { LOCATIONID: cfg.objectId.id } });
-                                                    Ext.getCmp('save_button').setDisabled(res.data[0].ROLE === 0);
+                                                    Ext.getCmp('save_button').setDisabled(res.data[0]?.ROLE === 0);
                                                 }
                                             }
                                         });
@@ -211,4 +228,3 @@ Ext.onReady(function () {
         }
     });
 });
-

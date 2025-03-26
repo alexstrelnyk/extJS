@@ -29,10 +29,17 @@ function getSQLData($con, $sql)
 
 $get_columns_sql = "
 	SELECT 
-		si.COLUMN_NAME,
-		si.DATA_TYPE
-	FROM all_tab_columns si
-	WHERE si.TABLE_NAME = 'KS_CRAMER_POWER' 
+    si.COLUMN_NAME,
+    si.DATA_TYPE
+FROM all_tab_columns si
+WHERE si.TABLE_NAME = 'KS_CRAMER_POWER'
+
+UNION ALL
+
+SELECT 
+    'NAME' AS COLUMN_NAME,
+    'VARCHAR2' AS DATA_TYPE
+FROM dual
 ";
 
 switch ($action) {
@@ -67,24 +74,33 @@ switch ($action) {
 		$sql = '';
 		foreach ($data as $dd) {
 			$rows = '';
+			$columns = [];
+			$primary_key_col = 'LOCATIONID';
 			foreach ($cols as $key => $val) {
-				if (!$key || $val['DATA_TYPE'] == 'DATE') {
-					continue; // Skip first element bacause it's table PRIMARY KEY and coundn't be editable
+				if ($val['COLUMN_NAME'] == 'NAME' || $val['DATA_TYPE'] == 'DATE' || ($val['COLUMN_NAME'] == $primary_key_col && $_REQUEST['is_update'])) {
+					continue;
 				}
 				$rows .= $val['COLUMN_NAME'] . ' = \'' . $dd->{$val['COLUMN_NAME']} . '\', ';
+				$columns[] = $val['COLUMN_NAME'];
+				$col_vals[] = $dd->{$val['COLUMN_NAME']};
 			}
-			$sqld .= 'UPDATE ks_cramer_power
-				SET 
-					' . $rows . '
-					UPDATED_AT = SYSDATE
-				WHERE LOCATIONID = ' . $dd->{'LOCATIONID'} . ';';
+			if ($_REQUEST['is_update']) {
+				$sqld .= 'UPDATE ks_cramer_power
+					SET 
+						' . $rows . '
+						UPDATED_AT = SYSDATE
+					WHERE ' . $primary_key_col . ' = ' . $dd->{$primary_key_col} . ';';
+			} else {
+				$sqld .= 'INSERT INTO ks_cramer_power (' . implode($columns, ', ') . ', CREATED_AT, UPDATED_AT)
+						 VALUES (\'' . implode($col_vals, '\', \'') . '\', SYSDATE, SYSDATE);';
+			}
 		};
 		$sql = "begin
 			null;
 			$sqld
 			end;
 		";
-		//  echo $sql; die();
+		//	  echo $sql; die();
 		$q = $con->exec($sql);
 		if (!$q) {
 			return_error($con->error());
