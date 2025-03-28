@@ -1,8 +1,7 @@
 Ext.onReady(function () {
     Ext.QuickTips.init();
 
-    var primary_key_col = 'LOCATIONID';
-    var is_update = 1;
+    var primary_key_col = 'LOCID';
 
     // Fetch enumeration data first
     Ext.Ajax.request({
@@ -45,18 +44,9 @@ Ext.onReady(function () {
                                 load: function (store, records) {
                                     Ext.getCmp('main_grid').getView().refresh();
 
-                                    // If no records, add an empty row and show all columns
                                     var colModel = Ext.getCmp('main_grid').getColumnModel();
-                                    if (Ext.getCmp('search_field').getValue() == '') {
-                                        if (records.length === 0) {
-                                            store.add(new Ext.data.Record({}));
-                                            colModel.setHidden(colModel.findColumnIndex(primary_key_col), false);
-                                            is_update = 0;
-                                        } else {
-                                            colModel.setHidden(colModel.findColumnIndex(primary_key_col), true);
-                                            is_update = 1;
-                                        }
-                                    }
+                                    colModel.setHidden(colModel.findColumnIndex(primary_key_col), true);
+                                    colModel.setHidden(colModel.findColumnIndex('LOCATIONID'), true);
                                 }
                             }
                         });
@@ -67,16 +57,17 @@ Ext.onReady(function () {
                             dataIndex: col.COLUMN_NAME,
                             width: 120,
                             editor: col.COLUMN_NAME === "NAME" ? null :  // Make "NAME" column non-editable
-                                col.DATA_TYPE === "DATE" ? null :
-                                    (enumMap[col.COLUMN_NAME] ? { // If field has enumeration, use combo box
-                                        xtype: 'combo',
-                                        store: enumStores[col.COLUMN_NAME],
-                                        displayField: 'value',
-                                        valueField: 'key',
-                                        mode: 'local',
-                                        triggerAction: 'all',
-                                        editable: false
-                                    } : { xtype: 'textfield' }), // Default to text field
+                                col.COLUMN_NAME === "ATOLL_SITE_NAME" ? null :  // Make "NAME" column non-editable
+                                    col.DATA_TYPE === "DATE" ? null :
+                                        (enumMap[col.COLUMN_NAME] ? { // If field has enumeration, use combo box
+                                            xtype: 'combo',
+                                            store: enumStores[col.COLUMN_NAME],
+                                            displayField: 'value',
+                                            valueField: 'key',
+                                            mode: 'local',
+                                            triggerAction: 'all',
+                                            editable: false
+                                        } : { xtype: 'textfield' }), // Default to text field
                             hidden: false, // Default: Show all columns
                             renderer: enumMap[col.COLUMN_NAME] ?
                                 function (value) { return enumMap[col.COLUMN_NAME][value] || value; } : null // Show readable value
@@ -91,36 +82,52 @@ Ext.onReady(function () {
                                 var searchField = new Ext.form.TextField({
                                     id: 'search_field',
                                     fieldLabel: 'Search',
-                                    width: 290,
+                                    width: 220,  // Adjust width to accommodate button
                                     enableKeyEvents: true,
                                     listeners: {
                                         specialkey: function (field, e) {
                                             if (e.getKey() === e.ENTER) {
-                                                grid_store.load({
-                                                    params: {
-                                                        action: 'get_data',
-                                                        query: field.getValue()
-                                                    },
-                                                    url: './tools/wizardPower/src/index.php',
-                                                    callback: function (records, options, success) {
-                                                        if (success) {
-                                                            Ext.getCmp('main_grid').getView().refresh();
-                                                        } else {
-                                                            Ext.Msg.alert('Error', 'Failed to fetch search results.');
-                                                        }
-                                                    }
-                                                });
+                                                performSearch();
                                             }
                                         }
                                     }
                                 });
 
-                                // Add the search field before the grid
+                                // Create the "Search" button
+                                var searchButton = new Ext.Button({
+                                    text: 'Search',
+                                    handler: function () {
+                                        performSearch();
+                                    }
+                                });
+
+                                // Function to perform the search
+                                function performSearch() {
+                                    var query = Ext.getCmp('search_field').getValue();
+                                    grid_store.load({
+                                        params: {
+                                            action: 'get_data',
+                                            query: query
+                                        },
+                                        url: './tools/wizardPower/src/index.php',
+                                        callback: function (records, options, success) {
+                                            if (success) {
+                                                Ext.getCmp('main_grid').getView().refresh();
+                                            } else {
+                                                Ext.Msg.alert('Error', 'Failed to fetch search results.');
+                                            }
+                                        }
+                                    });
+                                }
                                 var searchPanel = new Ext.Panel({
-                                    layout: 'form',
+                                    layout: 'hbox',
                                     border: false,
                                     bodyStyle: 'padding: 8px;',
-                                    items: [searchField]
+                                    items: [
+                                        searchField,
+                                        { xtype: 'spacer', width: 10 }, // Add space between field and button
+                                        searchButton
+                                    ]
                                 });
 
                                 wizardPower.superclass.constructor.call(this, {
@@ -176,7 +183,6 @@ Ext.onReady(function () {
                                                     url: './tools/wizardPower/src/index.php',
                                                     params: {
                                                         'action': 'save_data',
-                                                        'is_update': is_update,
                                                         data: Ext.encode(Ext.pluck(grid_store.getModifiedRecords(), 'data'))
                                                     },
                                                     success: function (result) {
@@ -202,12 +208,12 @@ Ext.onReady(function () {
                                     if (cfg.objectId && cfg.objectId.key === 'locd') {
                                         Ext.Ajax.request({
                                             url: './tools/wizardPower/src/index.php',
-                                            params: { action: 'get_data' },
+                                            params: { action: 'get_data', locd: cfg.objectId.id },
                                             success: function (result) {
                                                 var res = Ext.decode(result.responseText);
                                                 if (res.success) {
                                                     main_id = cfg.objectId.id;
-                                                    grid_store.load({ params: { LOCATIONID: cfg.objectId.id } });
+                                                    grid_store.load({ params: { 'locd': cfg.objectId.id } });
                                                     Ext.getCmp('save_button').setDisabled(res.data[0]?.ROLE === 0);
                                                 }
                                             }

@@ -8,6 +8,12 @@ include_once "../../../../../../common2/func2.php";
 
 $action = $_REQUEST['action'];
 $xaction = $_REQUEST['xaction'];
+$primary_key_col = 'LOCID';
+$static_fields = [
+	$primary_key_col,
+	'NAME',
+	'ATOLL_SITE_NAME',
+];
 
 getLogin();
 checkAccess();
@@ -26,29 +32,36 @@ function getSQLData($con, $sql)
 
 	return $ar;
 }
+$static_cols = '';
+foreach ($static_fields as $col) {
+	$static_cols .= "SELECT 
+    '$col' AS COLUMN_NAME,
+    'VARCHAR2' AS DATA_TYPE
+FROM dual
 
-$get_columns_sql = "
+UNION ALL ";
+}
+$get_columns_sql = $static_cols . "
 	SELECT 
     si.COLUMN_NAME,
     si.DATA_TYPE
 FROM all_tab_columns si
 WHERE si.TABLE_NAME = 'KS_CRAMER_POWER'
-
-UNION ALL
-
-SELECT 
-    'NAME' AS COLUMN_NAME,
-    'VARCHAR2' AS DATA_TYPE
-FROM dual
 ";
+
 
 switch ($action) {
 	case 'get_data':
-		$sql = "select t.*, l.name, ls.atoll_site_name from KS_CRAMER_POWER t
-			LEFT OUTER JOIN location_o l ON t.locationid = l.locationid
-			LEFT OUTER JOIN sattab_locationsite_o ls ON t.locationid = ls.locationid ";
+		$sql = "select l.locationid as $primary_key_col, l.name, ls.atoll_site_name, t.* from CRAMER.location_o l
+LEFT OUTER JOIN CRAMER.KS_CRAMER_POWER t ON t.locationid = l.locationid
+LEFT OUTER JOIN CRAMER.sattab_locationsite_o ls ON l.locationid = ls.locationid
+WHERE l.location2locationtype=1900000001
+AND rownum < 1000 ";
 		if (isset($_REQUEST['query']) && $query = $_REQUEST['query']) {
-			$sql .= "WHERE l.name LIKE '%" . $query . "%' OR ls.atoll_site_name LIKE '%" . $query . "%'";
+			$sql .= "AND l.name LIKE '%" . $query . "%' OR ls.atoll_site_name LIKE '%" . $query . "%'";
+		}
+		if (isset($_REQUEST['locd']) && $locd = $_REQUEST['locd']) {
+			$sql .= "AND t.locationid = " . $locd;
 		}
 		sendJSONFromSQL($con, $sql, false);
 		break;
@@ -72,35 +85,43 @@ switch ($action) {
 		};
 		$sqld = '';
 		$sql = '';
+		array_push($static_fields, 'LOCATIONID');
 		foreach ($data as $dd) {
 			$rows = '';
 			$columns = [];
-			$primary_key_col = 'LOCATIONID';
+			$col_vals = [];
 			foreach ($cols as $key => $val) {
-				if ($val['COLUMN_NAME'] == 'NAME' || $val['DATA_TYPE'] == 'DATE' || ($val['COLUMN_NAME'] == $primary_key_col && $_REQUEST['is_update'])) {
+				$col_name = $val['COLUMN_NAME'];
+				$col_type = $val['DATA_TYPE'];
+				$col_val = $dd->{$col_name};
+				if (in_array($col_name, $static_fields) || $col_type == 'DATE') {
 					continue;
 				}
-				$rows .= $val['COLUMN_NAME'] . ' = \'' . $dd->{$val['COLUMN_NAME']} . '\', ';
-				$columns[] = $val['COLUMN_NAME'];
-				$col_vals[] = $dd->{$val['COLUMN_NAME']};
+				$rows .= $col_name . ' = \'' . $dd->{$col_name} . '\', ';
+				$columns[] = $col_name;
+				if ($col_type == 'NUMBER') {
+					$col_vals[] = $col_val ? $col_val : 'NULL';
+				} else {
+					$col_vals[] = $col_val ? '\'' . $col_val . '\'' : 'NULL';
+				}
 			}
-			if ($_REQUEST['is_update']) {
-				$sqld .= 'UPDATE ks_cramer_power
-					SET 
-						' . $rows . '
-						UPDATED_AT = SYSDATE
-					WHERE ' . $primary_key_col . ' = ' . $dd->{$primary_key_col} . ';';
+			if ($dd->{'LOCATIONID'}) {
+				$sqld .= '
+					UPDATE ks_cramer_power
+						SET 
+					' . $rows . '
+					UPDATED_AT = SYSDATE
+					WHERE LOCATIONID = ' . $dd->{$primary_key_col} . ';';
 			} else {
-				$sqld .= 'INSERT INTO ks_cramer_power (' . implode($columns, ', ') . ', CREATED_AT, UPDATED_AT)
-						 VALUES (\'' . implode($col_vals, '\', \'') . '\', SYSDATE, SYSDATE);';
+				$sqld .= '
+					INSERT INTO ks_cramer_power (LOCATIONID, ' . implode($columns, ', ') . ', CREATED_AT, UPDATED_AT)
+					VALUES (' . $dd->{$primary_key_col} . ', ' . implode($col_vals, ', ') . ', SYSDATE, SYSDATE);';
 			}
 		};
-		$sql = "begin
-			null;
-			$sqld
-			end;
-		";
-		//	  echo $sql; die();
+		$sql = "begin null; 
+$sqld end;";
+		//	echo __FILE__.' '.__LINE__.'<pre>';print_r($cols).'</pre>';die;
+		//	echo __FILE__.' '.__LINE__.'<pre>';print_r($sql).'</pre>';die;
 		$q = $con->exec($sql);
 		if (!$q) {
 			return_error($con->error());

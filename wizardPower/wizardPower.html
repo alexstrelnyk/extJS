@@ -24,7 +24,7 @@
         function waitForWizard() {
             if (typeof wizardPower !== 'undefined') {
                 var w = new wizardPower();
-                w.initWizard({ 'objectId': { 'key': 'locd', 'id': '23341' } });
+                w.initWizard({ 'objectId': { 'key': 'locd', 'id': '' } });
             } else {
                 //    console.log("wizardPower is not yet defined. Retrying in 100ms...");
                 setTimeout(waitForWizard, 100); // Retry every 100ms
