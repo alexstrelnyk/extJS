@@ -34,7 +34,13 @@ Ext.onReady(function () {
                     var res = Ext.decode(response.responseText);
 
                     if (res.success) {
-                        var dynamicFields = res.data.map(col => col.COLUMN_NAME);
+                        var dynamicFields = res.data.map(col => ({
+                            name: col.COLUMN_NAME,
+                            type: col.DATA_TYPE === "DATE" ? 'date' : 'auto',
+                            dateFormat: col.DATA_TYPE === "DATE" ? 'd.m.Y H:i' : undefined // Match API format
+                        }));
+
+
                         var grid_store = new Ext.data.JsonStore({
                             root: 'data',
                             baseParams: { action: 'get_data' },
@@ -43,7 +49,6 @@ Ext.onReady(function () {
                             listeners: {
                                 load: function (store, records) {
                                     Ext.getCmp('main_grid').getView().refresh();
-
                                     var colModel = Ext.getCmp('main_grid').getColumnModel();
                                     colModel.setHidden(colModel.findColumnIndex(primary_key_col), true);
                                     colModel.setHidden(colModel.findColumnIndex('LOCATIONID'), true);
@@ -51,27 +56,42 @@ Ext.onReady(function () {
                             }
                         });
 
-                        // Generate dynamic columns
+
+
                         var dynamicColumns = res.data.map(col => ({
-                            header: col.COLUMN_NAME.replace(/_/g, ' '), // Format headers
+                            header: col.COLUMN_NAME.replace(/_/g, ' '),
                             dataIndex: col.COLUMN_NAME,
-                            width: 120,
-                            editor: col.COLUMN_NAME === "NAME" ? null :  // Make "NAME" column non-editable
-                                col.COLUMN_NAME === "ATOLL_SITE_NAME" ? null :  // Make "NAME" column non-editable
-                                    col.DATA_TYPE === "DATE" ? null :
-                                        (enumMap[col.COLUMN_NAME] ? { // If field has enumeration, use combo box
-                                            xtype: 'combo',
-                                            store: enumStores[col.COLUMN_NAME],
-                                            displayField: 'value',
-                                            valueField: 'key',
-                                            mode: 'local',
-                                            triggerAction: 'all',
-                                            editable: false
-                                        } : { xtype: 'textfield' }), // Default to text field
-                            hidden: false, // Default: Show all columns
-                            renderer: enumMap[col.COLUMN_NAME] ?
-                                function (value) { return enumMap[col.COLUMN_NAME][value] || value; } : null // Show readable value
+                            width: 100,
+                            editor:
+                                col.COLUMN_NAME === "NAME" ? null :  // Make "NAME" column non-editable
+                                    col.COLUMN_NAME === "ATOLL_SITE_NAME" ? null :
+                                        col.COLUMN_NAME === "CREATED_AT" ? null :
+                                            col.COLUMN_NAME === "UPDATED_AT" ? null :
+                                                col.DATA_TYPE === "DATE" ? {
+                                                    xtype: 'datefield',
+                                                    format: 'd.m.Y H:i', // Match database format
+                                                    submitFormat: 'Y-m-d H:i:s', // Format when saving
+                                                    allowBlank: true
+                                                } :
+                                                    (enumMap[col.COLUMN_NAME] ? {
+                                                        xtype: 'combo',
+                                                        store: enumStores[col.COLUMN_NAME],
+                                                        displayField: 'value',
+                                                        valueField: 'key',
+                                                        mode: 'local',
+                                                        triggerAction: 'all',
+                                                        editable: false
+                                                    } : { xtype: 'textfield' }),
+                            hidden: false,
+                            renderer: function (value) {
+                                if (col.DATA_TYPE === "DATE") {
+                                    return Ext.isDate(value) ? Ext.util.Format.date(value, 'd.m.Y H:i') : value;
+                                }
+                                return enumMap[col.COLUMN_NAME] ? (enumMap[col.COLUMN_NAME][value] || value) : value;
+                            }
                         }));
+
+
 
                         // Define `wizardPower` globally after fetching columns 
                         window.wizardPower = Ext.extend(Ext.Window, {

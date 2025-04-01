@@ -56,9 +56,9 @@ switch ($action) {
 LEFT OUTER JOIN CRAMER.KS_CRAMER_POWER t ON t.locationid = l.locationid
 LEFT OUTER JOIN CRAMER.sattab_locationsite_o ls ON l.locationid = ls.locationid
 WHERE l.location2locationtype=1900000001
-AND rownum < 1000 ";
+AND rownum < 10 ";
 		if (isset($_REQUEST['query']) && $query = $_REQUEST['query']) {
-			$sql .= "AND l.name LIKE '%" . $query . "%' OR ls.atoll_site_name LIKE '%" . $query . "%'";
+			$sql .= "AND l.name = '" . $query . "' OR ls.atoll_site_name = '" . $query . "'";
 		}
 		if (isset($_REQUEST['locd']) && $locd = $_REQUEST['locd']) {
 			$sql .= "AND t.locationid = " . $locd;
@@ -86,6 +86,9 @@ AND rownum < 1000 ";
 		$sqld = '';
 		$sql = '';
 		array_push($static_fields, 'LOCATIONID');
+		array_push($static_fields, 'CREATED_AT');
+		array_push($static_fields, 'UPDATED_AT');
+
 		foreach ($data as $dd) {
 			$rows = '';
 			$columns = [];
@@ -94,33 +97,37 @@ AND rownum < 1000 ";
 				$col_name = $val['COLUMN_NAME'];
 				$col_type = $val['DATA_TYPE'];
 				$col_val = $dd->{$col_name};
-				if (in_array($col_name, $static_fields) || $col_type == 'DATE') {
+				if (in_array($col_name, $static_fields)) {
 					continue;
 				}
-				$rows .= $col_name . ' = \'' . $dd->{$col_name} . '\', ';
 				$columns[] = $col_name;
-				if ($col_type == 'NUMBER') {
-					$col_vals[] = $col_val ? $col_val : 'NULL';
-				} else {
-					$col_vals[] = $col_val ? '\'' . $col_val . '\'' : 'NULL';
+				switch ($col_type) {
+					case 'NUMBER':
+						$parsed_val = $col_vals[] = $col_val ? $col_val : 'NULL';
+						break;
+					case 'DATE':
+						$parsed_val = $col_vals[] = $col_val ? 'TO_DATE(\'' . date('Y-m-d H:i:s', strtotime($col_val)) . '\', \'YYYY-MM-DD HH24:MI:SS\')' : 'NULL';
+						break;
+					default:
+						$parsed_val = $col_vals[] = $col_val ? '\'' . $col_val . '\'' : 'NULL';
 				}
+				$rows .= $col_name . ' = ' . $parsed_val . ', ';
 			}
 			if ($dd->{'LOCATIONID'}) {
 				$sqld .= '
-					UPDATE ks_cramer_power
-						SET 
-					' . $rows . '
-					UPDATED_AT = SYSDATE
-					WHERE LOCATIONID = ' . $dd->{$primary_key_col} . ';';
+UPDATE ks_cramer_power
+	SET 
+' . $rows . '
+UPDATED_AT = SYSDATE
+WHERE LOCATIONID = ' . $dd->{$primary_key_col} . ';';
 			} else {
 				$sqld .= '
-					INSERT INTO ks_cramer_power (LOCATIONID, ' . implode($columns, ', ') . ', CREATED_AT, UPDATED_AT)
-					VALUES (' . $dd->{$primary_key_col} . ', ' . implode($col_vals, ', ') . ', SYSDATE, SYSDATE);';
+INSERT INTO ks_cramer_power (LOCATIONID, ' . implode($columns, ', ') . ', CREATED_AT, UPDATED_AT)
+VALUES (' . $dd->{$primary_key_col} . ', ' . implode($col_vals, ', ') . ', SYSDATE, SYSDATE);';
 			}
 		};
 		$sql = "begin null; 
 $sqld end;";
-		//	echo __FILE__.' '.__LINE__.'<pre>';print_r($cols).'</pre>';die;
 		//	echo __FILE__.' '.__LINE__.'<pre>';print_r($sql).'</pre>';die;
 		$q = $con->exec($sql);
 		if (!$q) {
