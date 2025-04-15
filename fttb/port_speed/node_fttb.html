@@ -1,0 +1,63 @@
+
+<br>
+   <table class=fttb_node_disTable>
+      <tr>
+         <td>
+            <table class=fttb_node_ParTable>
+               <tr><th colspan=2><div class=fttb_node_Title>Коммутатор</div></th></tr>
+               <tr><th>Имя</th><td><NAME></td></tr>
+               <tr><th>Тип</th><td><NODETYPE></td></tr>
+               <tr><th>IP</th><td><b><IP_ADDRESS></b></td></tr>
+               <tr><th>MAC</th><td><MAC_ADDRESS></td></tr>
+               <tr><th>Серийный номер</th><td><SERIAL_NUMBER></td></tr>
+               <tr><th>MUSTANG Location</th><td><MUSTANG_LOCATION></td></tr>
+               <tr><th>Software</th><td><SOFTWARE></td></tr>
+               <tr><th>HOSTNAME</th><td><b><HOSTNAME></b></td></tr>               
+               <tr><th>VLANs</th><td><b><VLANS></b></td></tr>               
+               <tr><th>Ring protocol</th><td><b><RINGP></b></td></tr>               
+               <tr><th>Узел дистрибуции</th><td><a href='#' onclick="if (window.top==window) {window.open('homepage.php?el=node_<NUDID>');} else {window.top.opentab('<ALIAS1>','node_<NUDID>');};" ><ALIAS1></a></td></tr>
+               <tr><th>Порт дистрибуции</th><td><DS_PORT></td></tr>
+               <tr><th>№ HOP</th><td><HOP></td></tr>
+               <tr><th>Состояние</th><td><PROVISIONSTATUS> / <b><FUNCTIONALSTATUS></b></td></tr>
+			   <tr><th>Base config</th><td><a href='http://msu2.kyivstar.ua/partner.portal/src/cfg_generator.php?nodeid=<NODEID>'>Download</a> </td></tr>
+               <tr><th>B2B services</th><td><a href='#' onclick="if (window.top==window) {window.open('relation.php?page=phisics&el=node_<NODEID>');} else {window.top.opentab('<NAME>','node_<NODEID>','content/relation.php?page=phisics&el=');};" ><B2B_SERVICES></a></td></tr>
+            </table>
+         </td>
+         <td width=50>
+         </td>
+         <td valign=top>
+            <table class=fttb_node_ParTable>
+               <tr><th colspan=2><div class=fttb_node_Title>Системные параметры</div></th></tr>
+               <tr><th>ID</th><td><NODEID></td></tr>
+               <tr><th>NodeType</th><td><NODE2NODETYPE> (<NODE_TYPE>)</td></tr>       
+               <tr><th>NodeDef</th><td><NODE2NODEDEF> (<NODE_DEF>)</td></tr>       
+               <tr><th>PowerUsed</th><td><POWERUSED> W</td></tr>       
+               <tr><th>Дата создания</th><td><CREATEDDATE></td></tr>
+               <tr><th>Кто создал</th><td><CREATE_USER></td></tr>
+               <tr><th>Дата изменения</th><td><LASTMODIFIEDDATE></td></tr>
+               <tr><th>Кто правил</th><td><MODIFIED_USER></td></tr>
+               <tr><th>Inventory ID</th><td><OBJECTID></td></tr>       
+               <tr><th>Last Discovered</th><td><DISK_OK></td></tr>       
+               <tr><th>Disc Error</th><td><DISC_ERR></td></tr>       
+               <tr><th>Uplink port 1</th><td><UPLINK></td></tr>      
+               <tr><th>Uplink port 2</th><td><UPLINK2></td></tr>      
+            </table>
+         </td>
+      </tr>
+      <tr><td colspan=3></td></tr>
+      <tr>
+         <td colspan=3>
+            <table align=left class=fttb_node_ParTable width=100%>
+               <tr><th colspan=2><div class=fttb_node_Title>ТКД</div></th></tr>
+               <tr><th>Имя</th><td><a href='#' onclick="if (window.top==window) {window.open('homepage.php?el=locd_<LOCATIONID>');} else {window.top.opentab('<LOCATION>','locd_<LOCATIONID>');};" ><LOCATION></a></td></tr>
+			   <tr><th>MDU</th><td><MDU></td></tr>
+               <tr><th>Адрес</th><td><ADDRESS></td></tr>
+               <tr><th>Город</th><td><CITY></td></tr>
+               <tr><th>Подрядчик</th><td><GPO></td></tr>
+			   <tr><th>Портал статус</th><td><STATUS></td></tr>
+            </table>
+         </td>         
+      </tr>
+   </table>
+   
+   <img src='../img/node/<IMAGE>'>
