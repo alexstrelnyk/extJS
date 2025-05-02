@@ -122,12 +122,19 @@ Ext.onReady(function () {
 									width: 200,
 									listeners: {
 										select: function (combo, record) {
-											selectedStartLocId = record.get('LOCATIONID'); // store the ID
+											const selectedValue = combo.getValue();
+											selectedStartLocId = selectedValue;
+
+
+											// Reset child fields
+											Ext.getCmp('start_node_combo').clearValue();
+											Ext.getCmp('start_port_combo').clearValue();
+
 											Ext.Ajax.request({
 												url: './tools/wizardCircuit/src/index.php',
 												params: {
 													action: 'get_loc',
-													locid: selectedStartLocId
+													locid: selectedValue
 												},
 												success: function (response) {
 													const res = Ext.decode(response.responseText);
@@ -140,6 +147,7 @@ Ext.onReady(function () {
 												}
 											});
 										}
+
 									}
 
 								}]
@@ -194,7 +202,10 @@ Ext.onReady(function () {
 									listeners: {
 										select: function (combo, record) {
 											const selectedValue = combo.getValue();
-											selectedEndLocId = selectedValue; // store selected End Loc ID
+											selectedEndLocId = selectedValue;
+
+											Ext.getCmp('end_node_combo').clearValue();
+											Ext.getCmp('end_port_combo').clearValue();
 
 											Ext.Ajax.request({
 												url: './tools/wizardCircuit/src/index.php',
@@ -213,6 +224,7 @@ Ext.onReady(function () {
 												}
 											});
 										}
+
 
 									}
 								}]
@@ -246,7 +258,9 @@ Ext.onReady(function () {
 										},
 										select: function (combo, record) {
 											const selectedValue = combo.getValue();
-											selectedStartNodeId = selectedValue; // store selected Start Node ID
+											selectedStartNodeId = selectedValue;
+
+											Ext.getCmp('start_port_combo').clearValue();
 
 											Ext.Ajax.request({
 												url: './tools/wizardCircuit/src/index.php',
@@ -265,6 +279,7 @@ Ext.onReady(function () {
 												}
 											});
 										}
+
 
 									}
 
@@ -328,7 +343,9 @@ Ext.onReady(function () {
 										},
 										select: function (combo, record) {
 											const selectedValue = combo.getValue();
-											selectedEndNodeId = selectedValue; // store selected End Node ID
+											selectedEndNodeId = selectedValue;
+
+											Ext.getCmp('end_port_combo').clearValue();
 
 											Ext.Ajax.request({
 												url: './tools/wizardCircuit/src/index.php',
@@ -347,6 +364,7 @@ Ext.onReady(function () {
 												}
 											});
 										}
+
 
 									}
 
@@ -484,4 +502,3 @@ Ext.onReady(function () {
 		}
 	});
 });
-
