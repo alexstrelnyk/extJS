@@ -21,7 +21,7 @@ Ext.onReady(function () {
 				url: './tools/wizardCircuit/src/index.php',
 				baseParams: { action: 'get_loc_type' },
 				root: 'data',
-				fields: ['LOCATIONID', 'TYPE']
+				fields: ['CIRCUITTYPEID', 'NAME']
 			});
 			const startNodeStore = new Ext.data.JsonStore({
 				url: './tools/wizardCircuit/src/index.php',
@@ -51,7 +51,7 @@ Ext.onReady(function () {
 				url: './tools/wizardCircuit/src/index.php',
 				baseParams: { action: 'get_port_bandwidth' },
 				root: 'data',
-				fields: ['PORTID', 'BANDWIDTH']
+				fields: ['CIRCUITTYPEBANDWIDTHID', 'CTB2BANDWIDTH']
 			});
 
 
@@ -76,6 +76,8 @@ Ext.onReady(function () {
 			let selectedEndLocId = null;
 			let selectedStartNodeId = null;
 			let selectedEndNodeId = null;
+			let selectedTypeId = null;
+
 
 
 
@@ -161,12 +163,13 @@ Ext.onReady(function () {
 									editable: true,
 									minChars: 2,
 									store: locTypeStore,
-									valueField: 'LOCATIONID',
-									displayField: 'TYPE',
+									valueField: 'CIRCUITTYPEID',
+									displayField: 'NAME',
 									width: 200,
 									listeners: {
 										select: function (combo, record) {
 											const selectedValue = combo.getValue();
+											selectedTypeId = selectedValue;
 											Ext.Ajax.request({
 												url: './tools/wizardCircuit/src/index.php',
 												params: {
@@ -294,17 +297,25 @@ Ext.onReady(function () {
 									editable: true,
 									minChars: 2,
 									store: portBandwidthStore,
-									valueField: 'PORTID',
-									displayField: 'BANDWIDTH',
+									valueField: 'CIRCUITTYPEBANDWIDTHID',
+									displayField: 'CTB2BANDWIDTH',
 									width: 200,
 									listeners: {
+										beforequery: function () {
+											if (!selectedTypeId) {
+												Ext.Msg.alert('Error', 'Please select Type first');
+												return false;
+											}
+											portBandwidthStore.baseParams.locid = selectedTypeId;
+											portBandwidthStore.reload();
+										},
 										select: function (combo, record) {
 											const selectedValue = combo.getValue();
 											Ext.Ajax.request({
 												url: './tools/wizardCircuit/src/index.php',
 												params: {
 													action: 'get_port_bandwidth',
-													locid: selectedValue
+													typeid: selectedValue
 												},
 												success: function (response) {
 													const res = Ext.decode(response.responseText);
