@@ -124,8 +124,7 @@ Ext.onReady(function () {
 									width: 200,
 									listeners: {
 										select: function (combo, record) {
-											const selectedValue = combo.getValue();
-											selectedStartLocId = selectedValue;
+											selectedStartLocId = combo.getValue();
 
 
 											// Reset child fields
@@ -136,7 +135,7 @@ Ext.onReady(function () {
 												url: './tools/wizardCircuit/src/index.php',
 												params: {
 													action: 'get_loc',
-													locid: selectedValue
+													locid: selectedStartLocId
 												},
 												success: function (response) {
 													const res = Ext.decode(response.responseText);
@@ -168,13 +167,13 @@ Ext.onReady(function () {
 									width: 200,
 									listeners: {
 										select: function (combo, record) {
-											const selectedValue = combo.getValue();
-											selectedTypeId = selectedValue;
+											Ext.getCmp('bandwidth_combo').clearValue();
+											selectedTypeId = combo.getValue();
 											Ext.Ajax.request({
 												url: './tools/wizardCircuit/src/index.php',
 												params: {
 													action: 'get_loc_type',
-													locid: selectedValue
+													locid: selectedTypeId
 												},
 												success: function (response) {
 													const res = Ext.decode(response.responseText);
@@ -204,8 +203,7 @@ Ext.onReady(function () {
 									width: 200,
 									listeners: {
 										select: function (combo, record) {
-											const selectedValue = combo.getValue();
-											selectedEndLocId = selectedValue;
+											selectedEndLocId = combo.getValue();
 
 											Ext.getCmp('end_node_combo').clearValue();
 											Ext.getCmp('end_port_combo').clearValue();
@@ -214,7 +212,7 @@ Ext.onReady(function () {
 												url: './tools/wizardCircuit/src/index.php',
 												params: {
 													action: 'get_loc',
-													locid: selectedValue
+													locid: selectedEndLocId
 												},
 												success: function (response) {
 													const res = Ext.decode(response.responseText);
@@ -239,6 +237,7 @@ Ext.onReady(function () {
 						items: [
 							{
 								items: [{
+									id: 'start_node_combo',
 									fieldLabel: 'Start node',
 									xtype: 'combo',
 									mode: 'remote',
@@ -260,8 +259,7 @@ Ext.onReady(function () {
 											}
 										},
 										select: function (combo, record) {
-											const selectedValue = combo.getValue();
-											selectedStartNodeId = selectedValue;
+											selectedStartNodeId = combo.getValue();
 
 											Ext.getCmp('start_port_combo').clearValue();
 
@@ -269,7 +267,7 @@ Ext.onReady(function () {
 												url: './tools/wizardCircuit/src/index.php',
 												params: {
 													action: 'get_node',
-													locid: selectedValue
+													locid: selectedStartNodeId
 												},
 												success: function (response) {
 													const res = Ext.decode(response.responseText);
@@ -290,6 +288,7 @@ Ext.onReady(function () {
 							},
 							{
 								items: [{
+									id: 'bandwidth_combo',
 									fieldLabel: 'Bandwidth',
 									xtype: 'combo',
 									mode: 'remote',
@@ -333,6 +332,7 @@ Ext.onReady(function () {
 							},
 							{
 								items: [{
+									id: 'end_node_combo',
 									fieldLabel: 'End node',
 									xtype: 'combo',
 									mode: 'remote',
@@ -353,8 +353,7 @@ Ext.onReady(function () {
 											endNodeStore.load();
 										},
 										select: function (combo, record) {
-											const selectedValue = combo.getValue();
-											selectedEndNodeId = selectedValue;
+											selectedEndNodeId = combo.getValue();
 
 											Ext.getCmp('end_port_combo').clearValue();
 
@@ -362,7 +361,7 @@ Ext.onReady(function () {
 												url: './tools/wizardCircuit/src/index.php',
 												params: {
 													action: 'get_node',
-													locid: selectedValue
+													locid: selectedEndNodeId
 												},
 												success: function (response) {
 													const res = Ext.decode(response.responseText);
@@ -388,6 +387,7 @@ Ext.onReady(function () {
 						items: [
 							{
 								items: [{
+									id: 'start_port_combo',
 									fieldLabel: 'Start port',
 									xtype: 'combo',
 									mode: 'remote',
@@ -439,6 +439,7 @@ Ext.onReady(function () {
 							},
 							{
 								items: [{
+									id: 'end_port_combo',
 									fieldLabel: 'End port',
 									xtype: 'combo',
 									mode: 'remote',
@@ -488,7 +489,45 @@ Ext.onReady(function () {
 						text: 'Save',
 						id: 'circuit_form_button2',
 						handler: function () {
-							Ext.Msg.alert('Info', 'Save clicked');
+							const startPortId = Ext.getCmp('start_port_combo').getValue();
+							const endPortId = Ext.getCmp('end_port_combo').getValue();
+							const startNodeName = Ext.getCmp('start_node_combo').getValue();
+							const startPortName = Ext.getCmp('start_port_combo').getValue();
+							const endNodeName = Ext.getCmp('end_node_combo').getValue();
+							const endPortName = Ext.getCmp('end_port_combo').getValue();
+							const circuitTypeId = selectedTypeId;
+
+							// Validate required fields
+							if (!startPortId || !endPortId || !startNodeName || !startPortName || !endNodeName || !endPortName || !circuitTypeId) {
+								Ext.Msg.alert('Error', 'Please fill in all required fields.');
+								return;
+							}
+
+							Ext.Ajax.request({
+								url: './tools/wizardCircuit/src/index.php',
+								method: 'POST',
+								params: {
+									action: 'create_circuit',
+									startPortId: startPortId,
+									endPortId: endPortId,
+									startNodeName: startNodeName,
+									startPortName: startPortName,
+									endNodeName: endNodeName,
+									endPortName: endPortName,
+									circuitTypeId: circuitTypeId
+								},
+								success: function (response) {
+									const res = Ext.decode(response.responseText);
+									if (res.success) {
+										Ext.Msg.alert('Success', 'Circuit created successfully: ' + res.o_name);
+									} else {
+										Ext.Msg.alert('Error', res.o_errortext || 'Unknown error occurred.');
+									}
+								},
+								failure: function () {
+									Ext.Msg.alert('Error', 'Failed to communicate with the server.');
+								}
+							});
 						}
 					},
 					{ text: 'Cancel', handler: function () { Ext.getCmp('circuit_form_title').close(); } }
@@ -499,7 +538,7 @@ Ext.onReady(function () {
 				if (cfg.objectId?.key === 'locd') {
 					Ext.Ajax.request({
 						url: './tools/wizardCircuit/src/index.php',
-						params: { action: 'getloc', locid: cfg.objectId.id, date_f: cfg.objectId.date },
+						params: { action: 'get_loc', locid: cfg.objectId.id, date_f: cfg.objectId.date },
 						success: function (result) {
 							const res = Ext.decode(result.responseText);
 							if (res.success === true) {
