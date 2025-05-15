@@ -69,14 +69,50 @@ Ext.onReady(function () {
 				width: 200
 			};
 
-			// Will reference the textfield for "Name"
-			let nameTextField;
+			let nameTextField = Ext.getCmp('name_field');
 
 			let selectedStartLocId = null;  // stores Start loc ID
 			let selectedEndLocId = null;
 			let selectedStartNodeId = null;
 			let selectedEndNodeId = null;
 			let selectedTypeId = null;
+
+			function checkAllCombosAndGenerateName() {
+				const startLoc = selectedStartLocId;
+				const endLoc = selectedEndLocId;
+				const startNode = selectedStartNodeId;
+				const endNode = selectedEndNodeId;
+				const startPort = Ext.getCmp('start_port_combo').getValue();
+				const endPort = Ext.getCmp('end_port_combo').getValue();
+				const circuitType = selectedTypeId;
+
+				if (startLoc && endLoc && startNode && endNode && startPort && endPort && circuitType) {
+					Ext.Ajax.request({
+						url: './tools/wizardCircuit/src/index.php',
+						params: {
+							action: 'generate_name',
+							startLocId: startLoc,
+							endLocId: endLoc,
+							startNodeId: startNode,
+							endNodeId: endNode,
+							startPortId: startPort,
+							endPortId: endPort,
+							circuitTypeId: circuitType
+						},
+						success: function (response) {
+							const res = Ext.decode(response.responseText);
+							if (res.success && res.data && res.data.circuit_name) {
+								nameTextField.setValue(res.data.circuit_name);
+							}
+						},
+						failure: function () {
+							Ext.Msg.alert('Error', 'Failed to generate circuit name');
+						}
+					});
+				}
+			}
+
+
 
 
 
@@ -112,6 +148,7 @@ Ext.onReady(function () {
 						items: [
 							{
 								items: [{
+									id: 'start_loc_combo',
 									fieldLabel: 'Start loc',
 									xtype: 'combo',
 									mode: 'remote',
@@ -147,6 +184,8 @@ Ext.onReady(function () {
 													Ext.Msg.alert('Error', 'Failed to load Loc name');
 												}
 											});
+											checkAllCombosAndGenerateName();
+
 										}
 
 									}
@@ -185,12 +224,14 @@ Ext.onReady(function () {
 													Ext.Msg.alert('Error', 'Failed to load Loc name');
 												}
 											});
+											checkAllCombosAndGenerateName();
 										}
 									}
 								}]
 							},
 							{
 								items: [{
+									id: 'end_loc_combo',
 									fieldLabel: 'End loc',
 									xtype: 'combo',
 									mode: 'remote',
@@ -224,6 +265,7 @@ Ext.onReady(function () {
 													Ext.Msg.alert('Error', 'Failed to load Loc name');
 												}
 											});
+											checkAllCombosAndGenerateName();
 										}
 
 
@@ -279,7 +321,29 @@ Ext.onReady(function () {
 													Ext.Msg.alert('Error', 'Failed to load Node name');
 												}
 											});
+
+											Ext.Ajax.request({
+												url: './tools/wizardCircuit/src/index.php',
+												params: {
+													action: 'get_nodedef',
+													nodeid: selectedStartNodeId
+												},
+												success: function (response) {
+													const res = Ext.decode(response.responseText);
+													if (res.success && res.data && res.data.length > 0) {
+														const defValue = res.data[0].NODE2NODEDEF;
+														Ext.getCmp('nodedef_hidden').setValue(defValue);
+														console.log(defValue);
+													}
+												},
+												failure: function () {
+													Ext.Msg.alert('Error', 'Failed to load Node Definition');
+												}
+											});
+
+											checkAllCombosAndGenerateName();
 										}
+
 
 
 									}
@@ -326,6 +390,7 @@ Ext.onReady(function () {
 													Ext.Msg.alert('Error', 'Failed to load port Bandwidth');
 												}
 											});
+											checkAllCombosAndGenerateName();
 										}
 									}
 								}]
@@ -373,6 +438,7 @@ Ext.onReady(function () {
 													Ext.Msg.alert('Error', 'Failed to load Node name');
 												}
 											});
+											checkAllCombosAndGenerateName();
 										}
 
 
@@ -425,6 +491,7 @@ Ext.onReady(function () {
 													Ext.Msg.alert('Error', 'Failed to load port name');
 												}
 											});
+											checkAllCombosAndGenerateName();
 										}
 									}
 								}]
@@ -432,11 +499,21 @@ Ext.onReady(function () {
 							{
 								items: [
 									nameTextField = new Ext.form.TextField({
+										id: 'name_field',
 										fieldLabel: 'Name',
 										width: 200
 									})
 								]
 							},
+							{
+								items: [
+									{
+										xtype: 'hidden',
+										id: 'nodedef_hidden'
+									}
+								]
+							},
+
 							{
 								items: [{
 									id: 'end_port_combo',
@@ -477,6 +554,7 @@ Ext.onReady(function () {
 													Ext.Msg.alert('Error', 'Failed to load port name');
 												}
 											});
+											checkAllCombosAndGenerateName();
 										}
 									}
 								}]
@@ -489,16 +567,21 @@ Ext.onReady(function () {
 						text: 'Save',
 						id: 'circuit_form_button2',
 						handler: function () {
+							const name = Ext.getCmp('name_field').getValue();
+							const startLocId = Ext.getCmp('start_loc_combo').getValue();
 							const startPortId = Ext.getCmp('start_port_combo').getValue();
+							const endLocId = Ext.getCmp('end_loc_combo').getValue();
 							const endPortId = Ext.getCmp('end_port_combo').getValue();
-							const startNodeName = Ext.getCmp('start_node_combo').getValue();
-							const startPortName = Ext.getCmp('start_port_combo').getValue();
-							const endNodeName = Ext.getCmp('end_node_combo').getValue();
-							const endPortName = Ext.getCmp('end_port_combo').getValue();
+							const startNodeId = Ext.getCmp('start_node_combo').getValue();
+							const startPortName = Ext.getCmp('start_port_combo').getRawValue();
+							const endNodeId = Ext.getCmp('end_node_combo').getValue();
+							const endPortName = Ext.getCmp('end_port_combo').getRawValue();
+							const bandwidthId = Ext.getCmp('bandwidth_combo').getValue();
+							const circuitdef = Ext.getCmp('nodedef_hidden').getValue();
 							const circuitTypeId = selectedTypeId;
 
 							// Validate required fields
-							if (!startPortId || !endPortId || !startNodeName || !startPortName || !endNodeName || !endPortName || !circuitTypeId) {
+							if (!startPortId || !endPortId || !startNodeId || !startPortName || !endNodeId || !endPortName || !circuitTypeId || !bandwidthId) {
 								Ext.Msg.alert('Error', 'Please fill in all required fields.');
 								return;
 							}
@@ -508,12 +591,17 @@ Ext.onReady(function () {
 								method: 'POST',
 								params: {
 									action: 'create_circuit',
+									name: name,
+									startLocId: startLocId,
 									startPortId: startPortId,
+									endLocId: endLocId,
+									startNodeId: startNodeId,
 									endPortId: endPortId,
-									startNodeName: startNodeName,
 									startPortName: startPortName,
-									endNodeName: endNodeName,
+									endNodeId: endNodeId,
 									endPortName: endPortName,
+									bandwidthId: bandwidthId,
+									circuitdef: circuitdef,
 									circuitTypeId: circuitTypeId
 								},
 								success: function (response) {
