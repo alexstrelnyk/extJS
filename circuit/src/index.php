@@ -38,7 +38,8 @@ switch ($action) {
 		sendJSONFromSQL($con, $sql, false);
 		break;
 	case 'get_loc_type':
-		$sql = "select c.circuittypeid, c.name from CRAMER.CIRCUITTYPE_M c  
+		$sql = "select t.circuittypeid,d.circuitdefid,t.name||' '||d.name as name from circuittype_m t
+join circuitdef_m d on d.circuitdef2circuittype=t.circuittypeid
 		WHERE rownum < 20 ";
 		if (isset($_REQUEST['query']) && $query = $_REQUEST['query']) {
 			$sql .= "AND c.name LIKE '%" . $query . "%' ";
@@ -170,17 +171,55 @@ END;
 	case 'create_circuit':
 		$circuitTypeId = false;
 		$package_name = false;
+		$create_without_def = false;
+		$fields = "";
 		if (isset($_REQUEST['circuitTypeId']) && $circuitTypeId = $_REQUEST['circuitTypeId']) {
 			$package_name_sql = "
 	select t.circuittype2porttype from CRAMER.circuittype_m t 
 	where t.CIRCUITTYPEID = $circuitTypeId";
 			if ($circuit_row = getSQLData($con, $package_name_sql)) {
 				if ($circuit_row['CIRCUITTYPE2PORTTYPE']) {
-					$package_name = "CREATEDATACIRCUIT";
-				} else {
-					$package_name = "CREATECIRCUIT";
+					$create_without_def = true;
 				}
 			}
+		}
+
+		if ($create_without_def) {
+			$package_name = "CREATEDATACIRCUIT";
+			$fields = "
+o_errorcode, 
+o_errortext, 
+o_circuitid, 
+o_startlogportid, 
+o_endlogportid, 
+i_circuitname, 
+i_circuittypeid, 
+i_startlocid, 
+i_endlocid, 
+i_startnodeid, 
+i_endnodeid, 
+i_startportid, 
+i_endportid, 
+i_bandwidthid, 
+i_bandwidthkbps, 
+i_direction";
+		} else {
+			$package_name = "CREATECIRCUIT";
+			$fields = "
+o_errorcode, 
+o_errortext, 
+o_circuitid, 
+i_name, 
+i_startlocationid, 
+i_startnodeid, 
+i_startportid, 
+i_endlocationid, 
+i_endnodeid, 
+i_endportid, 
+i_circuitdef, 
+i_bandwidth, 
+[i_logicalstartportname], 
+[i_logicalendportname]";
 		}
 
 		$sql = "
@@ -217,7 +256,7 @@ END;
 			$sql .= "i_endportid   NUMBER := " . $query . "; 
 			";
 		}
-		if (isset($_REQUEST['circuitdef']) && $query = $_REQUEST['circuitdef']) {
+		if (!$create_without_def && isset($_REQUEST['circuitdef']) && $query = $_REQUEST['circuitdef']) {
 			$sql .= "i_circuitdef   NUMBER := " . $query . "; 
 			";
 		}
@@ -254,18 +293,7 @@ BEGIN
   CRAMER.getsession();
   
     PKGCIRCUIT.$package_name(
-    o_errorcode,
-    o_errortext,
-    o_circuitid,
-    i_name,
-    i_startlocationid,
-    i_startnodeid,
-    i_startportid,
-    i_endlocationid,
-    i_endnodeid,
-    i_endportid,
-    i_circuitdef,
-    i_bandwidth
+    $fields
     );
     DBMS_OUTPUT.put_line('Error Code: ' || o_errorcode);
     DBMS_OUTPUT.put_line('Error Text: ' || o_errortext);

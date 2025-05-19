@@ -21,7 +21,7 @@ Ext.onReady(function () {
 				url: './tools/wizardCircuit/src/index.php',
 				baseParams: { action: 'get_loc_type' },
 				root: 'data',
-				fields: ['CIRCUITTYPEID', 'NAME']
+				fields: ['CIRCUITTYPEID', 'NAME', 'CIRCUITDEF2CIRCUITTYPE']
 			});
 			const startNodeStore = new Ext.data.JsonStore({
 				url: './tools/wizardCircuit/src/index.php',
@@ -208,23 +208,12 @@ Ext.onReady(function () {
 										select: function (combo, record) {
 											Ext.getCmp('bandwidth_combo').clearValue();
 											selectedTypeId = combo.getValue();
-											Ext.Ajax.request({
-												url: './tools/wizardCircuit/src/index.php',
-												params: {
-													action: 'get_loc_type',
-													locid: selectedTypeId
-												},
-												success: function (response) {
-													const res = Ext.decode(response.responseText);
-													if (res.success && res.name) {
-														nameTextField.setValue(res.name);
-													}
-												},
-												failure: function () {
-													Ext.Msg.alert('Error', 'Failed to load Loc name');
-												}
-											});
 											checkAllCombosAndGenerateName();
+											const valueToSet = record.data.CIRCUITDEF2CIRCUITTYPE;
+											const hiddenField = Ext.getCmp('nodedef_hidden');
+											if (hiddenField && valueToSet !== undefined) {
+												hiddenField.setValue(valueToSet);
+											}
 										}
 									}
 								}]
