@@ -70,7 +70,8 @@ join circuitdef_m d on d.circuitdef2circuittype=t.circuittypeid
 		sendJSONFromSQL($con, $sql, false);
 		break;
 	case 'get_port_bandwidth':
-		$sql = "select b.circuittypebandwidthid, b.ctb2bandwidth from CRAMER.CIRCUITTYPEBANDWIDTH b
+		$sql = "select bb.bandwidthid, bb.name from cramer.bandwidth_m bb
+join CRAMER.CIRCUITTYPEBANDWIDTH b on b.ctb2bandwidth=bb.bandwidthid
 		WHERE rownum < 20 ";
 		if (isset($_REQUEST['query']) && $query = $_REQUEST['query']) {
 			$sql .= "AND b.ctb2bandwidth LIKE '%" . $query . "%' ";
@@ -95,17 +96,17 @@ join circuitdef_m d on d.circuitdef2circuittype=t.circuittypeid
 		if (isset($_REQUEST['endPortId']) && $query = $_REQUEST['endPortId']) {
 			$sql .= "i_circuitendportid   NUMBER := " . $query . "; ";
 		}
-		if (isset($_REQUEST['startNodeId']) && $query = $_REQUEST['startNodeId']) {
-			$sql .= "i_startnodename   NUMBER := " . $query . "; ";
+		if (isset($_REQUEST['startNodeName']) && $query = $_REQUEST['startNodeName']) {
+			$sql .= "i_startnodename   VARCHAR2(50) := '" . $query . "'; ";
 		}
-		if (isset($_REQUEST['startPortId']) && $query = $_REQUEST['startPortId']) {
-			$sql .= "i_startportname   NUMBER := " . $query . "; ";
+		if (isset($_REQUEST['startPortName']) && $query = $_REQUEST['startPortName']) {
+			$sql .= "i_startportname   VARCHAR2(50) := '" . $query . "'; ";
 		}
-		if (isset($_REQUEST['endNodeId']) && $query = $_REQUEST['endNodeId']) {
-			$sql .= "i_endnodename   NUMBER := " . $query . "; ";
+		if (isset($_REQUEST['endNodeName']) && $query = $_REQUEST['endNodeName']) {
+			$sql .= "i_endnodename   VARCHAR2(50) := '" . $query . "'; ";
 		}
-		if (isset($_REQUEST['endPortId']) && $query = $_REQUEST['endPortId']) {
-			$sql .= "i_endportname   NUMBER := " . $query . "; ";
+		if (isset($_REQUEST['endPortName']) && $query = $_REQUEST['endPortName']) {
+			$sql .= "i_endportname   VARCHAR2(50) := '" . $query . "'; ";
 		}
 		if (isset($_REQUEST['circuitTypeId']) && $query = $_REQUEST['circuitTypeId']) {
 			$sql .= "i_circuittype   NUMBER := " . $query . "; ";
@@ -126,6 +127,8 @@ BEGIN
         i_endnodename,
         i_endportname,
         i_circuittype
+		
+
     );
 
   --  DBMS_OUTPUT.put_line('Error Code: ' || o_errorcode);
@@ -135,8 +138,6 @@ BEGIN
 	:CNAME:=o_name;
 END;
 ";
-		//	exit($sql);
-		//	sendJSONFromSQL($con, $sql, false);
 
 		$pcon = $db_cfg['cramer_admin'];
 
@@ -151,7 +152,6 @@ END;
 			echo json_encode(array('success' => false, 'message' => 'Error divide ' . $e->getMessage()));
 		};
 
-		//	exit($circuit_name);
 		if (oci_error()) {
 			$e = oci_error();
 			echo json_encode(array('success' => false, 'message' => $e['message']));
@@ -287,9 +287,6 @@ BEGIN
 END;
 
 ";
-		//	exit($sql);
-		//	sendJSONFromSQL($con, $sql, false);
-
 		$pcon = $db_cfg['cramer_admin'];
 
 		$con = oci_connect($pcon['login'], $pcon['pass'], $pcon['param']);

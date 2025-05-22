@@ -51,7 +51,7 @@ Ext.onReady(function () {
 				url: './tools/wizardCircuit/src/index.php',
 				baseParams: { action: 'get_port_bandwidth' },
 				root: 'data',
-				fields: ['CIRCUITTYPEBANDWIDTHID', 'CTB2BANDWIDTH']
+				fields: ['BANDWIDTHID', 'NAME']
 			});
 
 
@@ -80,10 +80,10 @@ Ext.onReady(function () {
 			function checkAllCombosAndGenerateName() {
 				const startLoc = selectedStartLocId;
 				const endLoc = selectedEndLocId;
-				const startNode = selectedStartNodeId;
-				const endNode = selectedEndNodeId;
-				const startPort = Ext.getCmp('start_port_combo').getValue();
-				const endPort = Ext.getCmp('end_port_combo').getValue();
+				const startNode = Ext.getCmp('start_node_combo').getRawValue();
+				const endNode = Ext.getCmp('end_node_combo').getRawValue();
+				const startPort = Ext.getCmp('start_port_combo');
+				const endPort = Ext.getCmp('end_port_combo');
 				const circuitType = selectedTypeId;
 
 				if (startLoc && endLoc && startNode && endNode && startPort && endPort && circuitType) {
@@ -93,10 +93,12 @@ Ext.onReady(function () {
 							action: 'generate_name',
 							startLocId: startLoc,
 							endLocId: endLoc,
-							startNodeId: startNode,
-							endNodeId: endNode,
-							startPortId: startPort,
-							endPortId: endPort,
+							startNodeName: startNode,
+							endNodeName: endNode,
+							startPortName: startPort.getRawValue(),
+							startPortId: startPort.getValue(),
+							endPortName: endPort.getRawValue(),
+							endPortId: endPort.getValue(),
 							circuitTypeId: circuitType
 						},
 						success: function (response) {
@@ -331,8 +333,8 @@ Ext.onReady(function () {
 									editable: true,
 									minChars: 2,
 									store: portBandwidthStore,
-									valueField: 'CIRCUITTYPEBANDWIDTHID',
-									displayField: 'CTB2BANDWIDTH',
+									valueField: 'BANDWIDTHID',
+									displayField: 'NAME',
 									width: 200,
 									listeners: {
 										beforequery: function () {
@@ -578,9 +580,9 @@ Ext.onReady(function () {
 								success: function (response) {
 									const res = Ext.decode(response.responseText);
 									if (res.success) {
-										Ext.Msg.alert('Success', 'Circuit created successfully: ' + res.o_name);
+										Ext.Msg.alert('Success', 'Circuit created successfully: ' + res.data.circuit_id);
 									} else {
-										Ext.Msg.alert('Error', res.o_errortext || 'Unknown error occurred.');
+										Ext.Msg.alert('Error', res.message || 'Unknown error occurred.');
 									}
 								},
 								failure: function () {
