@@ -1,10 +1,11 @@
 <?
-//error_reporting(E_ALL);
+error_reporting(E_ALL);
 
 include_once "../../../../../../common/gconnect.php";
 include_once "../../../../../../common/getLogin.php";
 include_once "../../../../../../common2/tv_json.php";
 include_once "../../../../../../common2/func2.php";
+include_once "../../../../../../cfg/db.php";
 
 
 $action = $_REQUEST['action'];
@@ -42,7 +43,7 @@ switch ($action) {
 join circuitdef_m d on d.circuitdef2circuittype=t.circuittypeid
 		WHERE rownum < 20 ";
 		if (isset($_REQUEST['query']) && $query = $_REQUEST['query']) {
-			$sql .= "AND c.name LIKE '%" . $query . "%' ";
+			$sql .= "AND (t.name LIKE '%" . $query . "%' OR d.name LIKE '%" . $query . "%') ";
 		}
 		sendJSONFromSQL($con, $sql, false);
 		break;
@@ -54,14 +55,6 @@ join circuitdef_m d on d.circuitdef2circuittype=t.circuittypeid
 		}
 		if (isset($_REQUEST['query']) && $query = $_REQUEST['query']) {
 			$sql .= "AND n.name LIKE '%" . $query . "%' ";
-		}
-		sendJSONFromSQL($con, $sql, false);
-		break;
-	case 'get_nodedef':
-		$sql = "SELECT n.node2nodedef FROM CRAMER.node_o n
-		WHERE rownum < 20 ";
-		if (isset($_REQUEST['nodeid']) && $nodeid = $_REQUEST['nodeid']) {
-			$sql .= "AND n.nodeid = " . $nodeid . " ";
 		}
 		sendJSONFromSQL($con, $sql, false);
 		break;
@@ -89,7 +82,6 @@ join circuitdef_m d on d.circuitdef2circuittype=t.circuittypeid
 		break;
 	case 'generate_name':
 		$sql = "
-	--	SET SERVEROUTPUT ON;
 		
 		DECLARE
     o_errorcode            NUMBER;
@@ -136,17 +128,22 @@ BEGIN
         i_circuittype
     );
 
-    DBMS_OUTPUT.put_line('Error Code: ' || o_errorcode);
-    DBMS_OUTPUT.put_line('Error Text: ' || o_errortext);
-    DBMS_OUTPUT.put_line('Circuit Name: ' || o_name);
+  --  DBMS_OUTPUT.put_line('Error Code: ' || o_errorcode);
+  --  DBMS_OUTPUT.put_line('Error Text: ' || o_errortext);
+  --  DBMS_OUTPUT.put_line('Circuit Name: ' || o_name);
 	
 	:CNAME:=o_name;
 END;
 ";
 		//	exit($sql);
 		//	sendJSONFromSQL($con, $sql, false);
+
+		$pcon = $db_cfg['cramer_admin'];
+
+		$con = oci_connect($pcon['login'], $pcon['pass'], $pcon['param']);
+
 		$st = oci_parse($con, $sql);
-		oci_bind_by_name($st, ':CNAME', $circuit_name, 10);
+		oci_bind_by_name($st, ':CNAME', $circuit_name, 50);
 
 		try {
 			oci_execute($st);
@@ -154,6 +151,7 @@ END;
 			echo json_encode(array('success' => false, 'message' => 'Error divide ' . $e->getMessage()));
 		};
 
+		//	exit($circuit_name);
 		if (oci_error()) {
 			$e = oci_error();
 			echo json_encode(array('success' => false, 'message' => $e['message']));
@@ -182,44 +180,6 @@ END;
 					$create_without_def = true;
 				}
 			}
-		}
-
-		if ($create_without_def) {
-			$package_name = "CREATEDATACIRCUIT";
-			$fields = "
-o_errorcode, 
-o_errortext, 
-o_circuitid, 
-o_startlogportid, 
-o_endlogportid, 
-i_circuitname, 
-i_circuittypeid, 
-i_startlocid, 
-i_endlocid, 
-i_startnodeid, 
-i_endnodeid, 
-i_startportid, 
-i_endportid, 
-i_bandwidthid, 
-i_bandwidthkbps, 
-i_direction";
-		} else {
-			$package_name = "CREATECIRCUIT";
-			$fields = "
-o_errorcode, 
-o_errortext, 
-o_circuitid, 
-i_name, 
-i_startlocationid, 
-i_startnodeid, 
-i_startportid, 
-i_endlocationid, 
-i_endnodeid, 
-i_endportid, 
-i_circuitdef, 
-i_bandwidth, 
-[i_logicalstartportname], 
-[i_logicalendportname]";
 		}
 
 		$sql = "
@@ -269,63 +229,96 @@ i_bandwidth,
 			";
 		}
 
-		/*
-    $sql .= "
-	i_name   VARCHAR2(100) := 'jahgjdh'; 
-	i_startlocationid   NUMBER := 248779; 
-	i_startnodeid   NUMBER := 602735; 
-	i_startportid   NUMBER := 34144329; 
-	i_endlocationid   NUMBER := 248779; 
-	i_endnodeid   NUMBER := 602735; 
-	i_endportid   NUMBER := 34144329; 
-	i_circuitdef   NUMBER := 100002015; 
-	i_bandwidth   NUMBER := 100002105;
-	i_circuittype   NUMBER := 100002003;
-	";
-	
-	*/
+		if ($create_without_def) {
+			$package_name = "CREATEDATACIRCUIT";
+			$fields = "
+o_errorcode, 
+o_errortext, 
+o_circuitid, 
+o_startlogportid, 
+o_endlogportid, 
+i_circuitname, 
+i_circuittypeid, 
+i_startlocid, 
+i_endlocid, 
+i_startnodeid, 
+i_endnodeid, 
+i_startportid, 
+i_endportid, 
+i_bandwidthid, 
+i_bandwidthkbps, 
+i_direction";
+		} else {
+			$package_name = "CREATECIRCUIT";
+			$fields = "
+o_errorcode, 
+o_errortext, 
+o_circuitid, 
+i_name, 
+i_startlocationid, 
+i_startnodeid, 
+i_startportid, 
+i_endlocationid, 
+i_endnodeid, 
+i_endportid, 
+i_circuitdef, 
+i_bandwidth
+";
+		}
 
 		$sql .= "
-	
 	
 BEGIN
 
   CRAMER.getsession();
   
-    PKGCIRCUIT.$package_name(
+  PKGCIRCUIT.$package_name(
     $fields
-    );
-    DBMS_OUTPUT.put_line('Error Code: ' || o_errorcode);
-    DBMS_OUTPUT.put_line('Error Text: ' || o_errortext);
-    DBMS_OUTPUT.put_line('Circuit ID: ' || o_circuitid);
-    DBMS_OUTPUT.put_line('Circuit Name: ' || i_name);
-	
-	:CIRID:=o_circuitid;
+  );
+
+  IF o_errorcode != 0 THEN
+    RAISE_APPLICATION_ERROR(-20001, 'Package Error: ' || o_errortext);
+  END IF;
+
+  :CIRID := o_circuitid;
+  :ERRCODE := o_errorcode;
+  :ERRTEXT := o_errortext;
+
 END;
+
 ";
 		//	exit($sql);
 		//	sendJSONFromSQL($con, $sql, false);
+
+		$pcon = $db_cfg['cramer_admin'];
+
+		$con = oci_connect($pcon['login'], $pcon['pass'], $pcon['param']);
 		$st = oci_parse($con, $sql);
 		oci_bind_by_name($st, ':CIRID', $circuit_id, 10);
+		oci_bind_by_name($st, ':ERRCODE', $errorcode, 10);
+		oci_bind_by_name($st, ':ERRTEXT', $errortext, 4000);
 
-		try {
-			oci_execute($st);
-		} catch (Exception $e) {
-			echo json_encode(array('success' => false, 'message' => 'Error divide ' . $e->getMessage()));
-		};
-
-		if (oci_error()) {
-			$e = oci_error();
-			echo json_encode(array('success' => false, 'message' => $e['message']));
+		if (!oci_execute($st)) {
+			$e = oci_error($st);
+			echo json_encode(['success' => false, 'message' => 'Oracle Error: ' . $e['message']]);
 			oci_rollback($con);
-		} else {
-			if (empty($circuit_id)) {
-				echo json_encode(array('success' => false, 'message' => 'Error, new circuit id is empty.' . $e['message']));
-				oci_rollback($con);
-			} else {
-				oci_commit($con);
-				echo json_encode(array('success' => true, 'data' => array('circuit_id' => $circuit_id)));
-			}
+			exit;
 		}
+
+		if ($errorcode != 0) {
+			echo json_encode(['success' => false, 'message' => 'Procedure Error: ' . $errortext]);
+			oci_rollback($con);
+			exit;
+		}
+
+		if (empty($circuit_id)) {
+			echo json_encode(['success' => false, 'message' => 'Error: New circuit ID is empty.']);
+			oci_rollback($con);
+			exit;
+		}
+
+		oci_commit($con);
+		echo json_encode(['success' => true, 'data' => ['circuit_id' => $circuit_id]]);
+
 		break;
 }

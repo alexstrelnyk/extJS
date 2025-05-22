@@ -21,7 +21,7 @@ Ext.onReady(function () {
 				url: './tools/wizardCircuit/src/index.php',
 				baseParams: { action: 'get_loc_type' },
 				root: 'data',
-				fields: ['CIRCUITTYPEID', 'NAME', 'CIRCUITDEF2CIRCUITTYPE']
+				fields: ['CIRCUITTYPEID', 'NAME', 'CIRCUITDEFID']
 			});
 			const startNodeStore = new Ext.data.JsonStore({
 				url: './tools/wizardCircuit/src/index.php',
@@ -209,7 +209,8 @@ Ext.onReady(function () {
 											Ext.getCmp('bandwidth_combo').clearValue();
 											selectedTypeId = combo.getValue();
 											checkAllCombosAndGenerateName();
-											const valueToSet = record.data.CIRCUITDEF2CIRCUITTYPE;
+											console.log(record.data);
+											const valueToSet = record.data.CIRCUITDEFID;
 											const hiddenField = Ext.getCmp('nodedef_hidden');
 											if (hiddenField && valueToSet !== undefined) {
 												hiddenField.setValue(valueToSet);
@@ -308,25 +309,6 @@ Ext.onReady(function () {
 												},
 												failure: function () {
 													Ext.Msg.alert('Error', 'Failed to load Node name');
-												}
-											});
-
-											Ext.Ajax.request({
-												url: './tools/wizardCircuit/src/index.php',
-												params: {
-													action: 'get_nodedef',
-													nodeid: selectedStartNodeId
-												},
-												success: function (response) {
-													const res = Ext.decode(response.responseText);
-													if (res.success && res.data && res.data.length > 0) {
-														const defValue = res.data[0].NODE2NODEDEF;
-														Ext.getCmp('nodedef_hidden').setValue(defValue);
-														console.log(defValue);
-													}
-												},
-												failure: function () {
-													Ext.Msg.alert('Error', 'Failed to load Node Definition');
 												}
 											});
 
