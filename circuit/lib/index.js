@@ -153,7 +153,7 @@ Ext.onReady(function () {
 									id: 'start_loc_combo',
 									fieldLabel: 'Start loc',
 									xtype: 'combo',
-									mode: 'remote',
+									mode: 'local',
 									triggerAction: 'all',
 									editable: true,
 									minChars: 2,
@@ -196,6 +196,7 @@ Ext.onReady(function () {
 							},
 							{
 								items: [{
+									id: 'loc_type_combo',
 									fieldLabel: 'Type',
 									xtype: 'combo',
 									mode: 'remote',
@@ -595,20 +596,111 @@ Ext.onReady(function () {
 				]
 			});
 
+			function setComboValue1(comboId, value) {
+				const combo = Ext.getCmp(comboId);
+				if (!combo) {
+					console.error(`ComboBox с id "${comboId}" не найден.`);
+					return;
+				}
+
+				const store = combo.getStore();
+				if (!store) {
+					console.error(`У ComboBox "${comboId}" нет store.`);
+					return;
+				}
+
+				// Проверка: если store уже загружен, просто установить
+				if (store.getCount() > 0) {
+					combo.setValue(value);
+					return;
+				}
+
+				// Иначе — загрузить и потом установить
+				store.load({
+					callback: function (records, operation, success) {
+						if (success) {
+							combo.setValue(value);
+						} else {
+							console.error(`Не удалось загрузить store для ComboBox "${comboId}".`);
+						}
+					}
+				});
+			}
+
+
+			function setComboWithDependency(parentComboId, parentValue, childComboId, childValue, paramName = 'locid') {
+				const parentCombo = Ext.getCmp(parentComboId);
+				const childCombo = Ext.getCmp(childComboId);
+
+				if (!parentCombo || !childCombo) {
+					console.error('Один из ComboBox не найден.');
+					return;
+				}
+
+				const parentStore = parentCombo.getStore();
+				const childStore = childCombo.getStore();
+
+				// Шаг 1: загрузить и установить родительский combo
+				parentStore.load({
+					callback: function () {
+						parentCombo.setValue(parentValue);
+
+						// Шаг 2: передать параметр и загрузить store дочернего combo
+						childStore.baseParams[paramName] = parentValue;
+						childStore.load({
+							callback: function () {
+								childCombo.setValue(childValue);
+
+								// Шаг 3 (опционально): вручную вызвать обработчик select, если нужно
+								childCombo.fireEvent('select', childCombo, childStore.getById(childValue));
+							}
+						});
+					}
+				});
+			}
+
+
+
 			this.initWizard = function (cfg) {
-				if (cfg.objectId?.key === 'locd') {
+				if (cfg.objectId?.key === 'circ') {
+					circuit_form_id = cfg.objectId.id;
 					Ext.Ajax.request({
 						url: './tools/wizardCircuit/src/index.php',
-						params: { action: 'get_loc', locid: cfg.objectId.id, date_f: cfg.objectId.date },
+						params: { action: 'get_circuit', id: cfg.objectId.id },
 						success: function (result) {
 							const res = Ext.decode(result.responseText);
-							if (res.success === true) {
-								circuit_form_id = cfg.objectId.id;
+							// console.log(res.data.length);
+							if (res.success === true && res.data.length > 0) {
+								row = res.data[0];
+								console.log(row);
+								Ext.getCmp('name_field').setValue(row.NAME);
+
+								//  Ext.getCmp('bandwidth_combo').setValue(row.CIRCUIT2BANDWIDTH);
+								//  Ext.getCmp('start_loc_combo').setValue(row.CIRCUIT2STARTLOCATION);
+
+								/*
+								setComboValue('start_loc_combo', row.CIRCUIT2STARTLOCATION);
+								setComboValue('loc_type_combo', row.CIRCUIT2CIRCUITTYPE);
+								setComboValue('end_loc_combo', row.CIRCUIT2ENDLOCATION);
+								setComboValue('start_node_combo', row.CIRCUIT2STARTNODE);
+								
+								*/
+
+								setComboWithDependency(
+									'start_loc_combo', row.CIRCUIT2STARTLOCATION,
+									'start_node_combo', row.CIRCUIT2STARTNODE
+								);
+								setComboWithDependency(
+									'start_node_combo', row.CIRCUIT2STARTNODE,
+									'start_port_combo', row.CIRCUIT2STARTPORT,
+									'nodeid'
+								);
+
 							}
 						}
 					});
-					this.show();
 				}
+				this.show();
 			};
 		}
 	});
