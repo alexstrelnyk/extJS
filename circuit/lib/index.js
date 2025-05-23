@@ -629,35 +629,45 @@ Ext.onReady(function () {
 
 
 			function setComboWithDependency(parentComboId, parentValue, childComboId, childValue, paramName = 'locid') {
-				const parentCombo = Ext.getCmp(parentComboId);
-				const childCombo = Ext.getCmp(childComboId);
+				return new Promise((resolve, reject) => {
+					const parentCombo = Ext.getCmp(parentComboId);
+					const childCombo = Ext.getCmp(childComboId);
 
-				if (!parentCombo || !childCombo) {
-					console.error('Один из ComboBox не найден.');
-					return;
-				}
-
-				const parentStore = parentCombo.getStore();
-				const childStore = childCombo.getStore();
-
-				// Шаг 1: загрузить и установить родительский combo
-				parentStore.load({
-					callback: function () {
-						parentCombo.setValue(parentValue);
-
-						// Шаг 2: передать параметр и загрузить store дочернего combo
-						childStore.baseParams[paramName] = parentValue;
-						childStore.load({
-							callback: function () {
-								childCombo.setValue(childValue);
-
-								// Шаг 3 (опционально): вручную вызвать обработчик select, если нужно
-								childCombo.fireEvent('select', childCombo, childStore.getById(childValue));
-							}
-						});
+					if (!parentCombo || !childCombo) {
+						console.error('Один из ComboBox не найден.');
+						reject('Combo not found');
+						return;
 					}
+
+					const parentStore = parentCombo.getStore();
+					const childStore = childCombo.getStore();
+
+					// Шаг 1: загрузка и установка родителя
+					parentStore.load({
+						callback: function () {
+							parentCombo.setValue(parentValue);
+
+							// Шаг 2: подгрузка дочернего store с параметром
+							childStore.baseParams[paramName] = parentValue;
+							childStore.load({
+								callback: function () {
+									const index = childStore.find(childCombo.valueField, childValue);
+									if (index !== -1) {
+										const record = childStore.getAt(index);
+										childCombo.setValue(childValue);
+										childCombo.fireEvent('select', childCombo, record);
+									}
+									resolve();
+								},
+								failure: reject
+							});
+
+						},
+						failure: reject
+					});
 				});
 			}
+
 
 
 
@@ -686,15 +696,50 @@ Ext.onReady(function () {
 								
 								*/
 
-								setComboWithDependency(
-									'start_loc_combo', row.CIRCUIT2STARTLOCATION,
-									'start_node_combo', row.CIRCUIT2STARTNODE
-								);
-								setComboWithDependency(
-									'start_node_combo', row.CIRCUIT2STARTNODE,
-									'start_port_combo', row.CIRCUIT2STARTPORT,
-									'nodeid'
-								);
+								(async () => {
+									try {
+										await setComboWithDependency(
+											'start_loc_combo',
+											row.CIRCUIT2STARTLOCATION,
+											'start_node_combo',
+											row.CIRCUIT2STARTNODE
+										);
+
+										await setComboWithDependency(
+											'start_node_combo',
+											row.CIRCUIT2STARTNODE,
+											'start_port_combo',
+											row.CIRCUIT2STARTPORT,
+											'nodeid'
+										);
+
+										await setComboWithDependency(
+											'loc_type_combo',
+											row.CIRCUIT2CIRCUITTYPE,
+											'bandwidth_combo',
+											row.CIRCUIT2BANDWIDTH,
+											'typeid'
+										);
+
+										await setComboWithDependency(
+											'end_loc_combo',
+											row.CIRCUIT2ENDLOCATION,
+											'end_node_combo',
+											row.CIRCUIT2ENDNODE
+										);
+
+										await setComboWithDependency(
+											'end_node_combo',
+											row.CIRCUIT2ENDNODE,
+											'end_port_combo',
+											row.CIRCUIT2ENDPORT,
+											'nodeid'
+										);
+									} catch (err) {
+										console.error('Ошибка при установке combo:', err);
+									}
+								})();
+
 
 							}
 						}
