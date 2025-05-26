@@ -629,14 +629,13 @@ Ext.onReady(function () {
 				});
 			}
 
-
-			function setComboWithDependency(parentComboId, parentValue, childComboId, childValue, paramName = 'locid') {
+			function setComboWithDependency(parentComboId, parentValue, childComboId, childValue, paramName = 'locid', extraFieldMapping = null) {
 				return new Promise((resolve, reject) => {
 					const parentCombo = Ext.getCmp(parentComboId);
 					const childCombo = Ext.getCmp(childComboId);
 
 					if (!parentCombo || !childCombo) {
-						console.error('Один из ComboBox не найден.');
+						console.error('Combo not found');
 						reject('Combo not found');
 						return;
 					}
@@ -644,12 +643,22 @@ Ext.onReady(function () {
 					const parentStore = parentCombo.getStore();
 					const childStore = childCombo.getStore();
 
-					// loading parent 
 					parentStore.load({
 						callback: function () {
 							parentCombo.setValue(parentValue);
 
-							// loading child param
+							if (extraFieldMapping) {
+								const recIndex = parentStore.find(parentCombo.valueField, parentValue);
+								if (recIndex !== -1) {
+									const rec = parentStore.getAt(recIndex);
+									const extraValue = rec.get(extraFieldMapping.fromField);
+									const targetCmp = Ext.getCmp(extraFieldMapping.toCmpId);
+									if (targetCmp) {
+										targetCmp.setValue(extraValue);
+									}
+								}
+							}
+
 							childStore.baseParams[paramName] = parentValue;
 							childStore.load({
 								callback: function () {
@@ -664,12 +673,12 @@ Ext.onReady(function () {
 								},
 								failure: reject
 							});
-
 						},
 						failure: reject
 					});
 				});
 			}
+
 
 
 
@@ -710,8 +719,13 @@ Ext.onReady(function () {
 											row.CIRCUIT2CIRCUITTYPE,
 											'bandwidth_combo',
 											row.CIRCUIT2BANDWIDTH,
-											'typeid'
+											'typeid',
+											{
+												fromField: 'CIRCUITDEFID',
+												toCmpId: 'nodedef_hidden'
+											}
 										);
+
 
 										await setComboWithDependency(
 											'end_loc_combo',
