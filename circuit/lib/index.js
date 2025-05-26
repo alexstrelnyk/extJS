@@ -285,6 +285,7 @@ Ext.onReady(function () {
 									store: startNodeStore,
 									listeners: {
 										beforequery: function () {
+											selectedStartLocId = Ext.getCmp('start_loc_combo').getValue();
 											if (selectedStartLocId) {
 												startNodeStore.baseParams.locid = selectedStartLocId; // pass the selected Start loc
 												startNodeStore.reload();
@@ -339,6 +340,7 @@ Ext.onReady(function () {
 									width: 200,
 									listeners: {
 										beforequery: function () {
+											selectedTypeId = Ext.getCmp('loc_type_combo').getValue();
 											if (!selectedTypeId) {
 												Ext.Msg.alert('Error', 'Please select Type first');
 												return false;
@@ -384,6 +386,7 @@ Ext.onReady(function () {
 									width: 200,
 									listeners: {
 										beforequery: function () {
+											selectedEndLocId = Ext.getCmp('end_loc_combo').getValue();
 											if (!selectedEndLocId) {
 												Ext.Msg.alert('Error', 'Please select End loc first');
 												return false;
@@ -552,10 +555,10 @@ Ext.onReady(function () {
 							const endPortName = Ext.getCmp('end_port_combo').getRawValue();
 							const bandwidthId = Ext.getCmp('bandwidth_combo').getValue();
 							const circuitdef = Ext.getCmp('nodedef_hidden').getValue();
-							const circuitTypeId = selectedTypeId;
+							const circuitTypeId = Ext.getCmp('loc_type_combo').getValue();
 
 							// Validate required fields
-							if (!startPortId || !endPortId || !startNodeId || !startPortName || !endNodeId || !endPortName || !circuitTypeId || !bandwidthId) {
+							if (!startPortId || !endPortId || !startNodeId || !startPortName || !endNodeId || !endPortName || !circuitTypeId) {
 								Ext.Msg.alert('Error', 'Please fill in all required fields.');
 								return;
 							}
@@ -564,7 +567,8 @@ Ext.onReady(function () {
 								url: './tools/wizardCircuit/src/index.php',
 								method: 'POST',
 								params: {
-									action: 'create_circuit',
+									action: circuit_form_id ? 'update_circuit' : 'create_circuit',
+									circuitId: circuit_form_id,
 									name: name,
 									startLocId: startLocId,
 									startPortId: startPortId,
@@ -581,7 +585,7 @@ Ext.onReady(function () {
 								success: function (response) {
 									const res = Ext.decode(response.responseText);
 									if (res.success) {
-										Ext.Msg.alert('Success', 'Circuit created successfully: ' + res.data.circuit_id);
+										Ext.Msg.alert('Success', 'Circuit ' + (circuit_form_id ? 'updated' : 'created') + ' successfully: ' + res.data.circuit_id);
 									} else {
 										Ext.Msg.alert('Error', res.message || 'Unknown error occurred.');
 									}
@@ -609,19 +613,17 @@ Ext.onReady(function () {
 					return;
 				}
 
-				// Проверка: если store уже загружен, просто установить
 				if (store.getCount() > 0) {
 					combo.setValue(value);
 					return;
 				}
 
-				// Иначе — загрузить и потом установить
 				store.load({
 					callback: function (records, operation, success) {
 						if (success) {
 							combo.setValue(value);
 						} else {
-							console.error(`Не удалось загрузить store для ComboBox "${comboId}".`);
+							console.error(`could not load store for combo "${comboId}".`);
 						}
 					}
 				});
@@ -642,12 +644,12 @@ Ext.onReady(function () {
 					const parentStore = parentCombo.getStore();
 					const childStore = childCombo.getStore();
 
-					// Шаг 1: загрузка и установка родителя
+					// loading parent 
 					parentStore.load({
 						callback: function () {
 							parentCombo.setValue(parentValue);
 
-							// Шаг 2: подгрузка дочернего store с параметром
+							// loading child param
 							childStore.baseParams[paramName] = parentValue;
 							childStore.load({
 								callback: function () {
@@ -657,6 +659,7 @@ Ext.onReady(function () {
 										childCombo.setValue(childValue);
 										childCombo.fireEvent('select', childCombo, record);
 									}
+									console.log(parentComboId, childComboId, index, childValue);
 									resolve();
 								},
 								failure: reject
@@ -684,17 +687,6 @@ Ext.onReady(function () {
 								row = res.data[0];
 								console.log(row);
 								Ext.getCmp('name_field').setValue(row.NAME);
-
-								//  Ext.getCmp('bandwidth_combo').setValue(row.CIRCUIT2BANDWIDTH);
-								//  Ext.getCmp('start_loc_combo').setValue(row.CIRCUIT2STARTLOCATION);
-
-								/*
-								setComboValue('start_loc_combo', row.CIRCUIT2STARTLOCATION);
-								setComboValue('loc_type_combo', row.CIRCUIT2CIRCUITTYPE);
-								setComboValue('end_loc_combo', row.CIRCUIT2ENDLOCATION);
-								setComboValue('start_node_combo', row.CIRCUIT2STARTNODE);
-								
-								*/
 
 								(async () => {
 									try {
@@ -736,7 +728,7 @@ Ext.onReady(function () {
 											'nodeid'
 										);
 									} catch (err) {
-										console.error('Ошибка при установке combo:', err);
+										console.error('Error combo setup:', err);
 									}
 								})();
 
