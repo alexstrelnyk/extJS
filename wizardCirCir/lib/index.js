@@ -1,0 +1,142 @@
+Ext.onReady(function () {
+  Ext.QuickTips.init();
+
+  function createGridPanel(title) {
+    return {
+      xtype: 'panel',
+      layout: 'hbox',
+      border: false,
+      bodyStyle: 'margin: 10px 0;',
+      items: [
+        {
+          xtype: 'grid',
+          title: title.charAt(0).toUpperCase() + title.slice(1),
+          width: 400,
+          height: 150,
+          store: new Ext.data.ArrayStore({
+            fields: ['id', 'name'],
+            data: []
+          }),
+          columns: [
+            { header: 'Id', dataIndex: 'id', width: 100 },
+            { header: 'Name', dataIndex: 'name', width: 280 }
+          ]
+        },
+        {
+          xtype: 'panel',
+          layout: {
+            type: 'vbox',
+            align: 'middle',
+            pack: 'center'
+          },
+          width: 100,
+          height: 150,
+          bodyStyle: 'padding: 10px 5px;',
+          defaults: {
+            xtype: 'button',
+            width: 60,
+            style: 'margin-bottom: 8px;'
+          },
+          items: [
+            {
+              text: 'Add',
+              handler: function () {
+                Ext.Ajax.request({
+                  url: './tools/wizardCirCir/src/index.php',
+                  params: { action: 'add_' + title },
+                  success: function () {
+                    console.log('Add ' + title + ' successful');
+                  }
+                });
+              }
+            },
+            {
+              text: 'Del',
+              handler: function () {
+                Ext.Ajax.request({
+                  url: './tools/wizardCirCir/src/index.php',
+                  params: { action: 'del_' + title },
+                  success: function () {
+                    console.log('Delete ' + title + ' successful');
+                  }
+                });
+              }
+            },
+            {
+              text: 'Save',
+              handler: function () {
+                Ext.Ajax.request({
+                  url: './tools/wizardCirCir/src/index.php',
+                  params: { action: 'save_' + title },
+                  success: function () {
+                    console.log('Save ' + title + ' successful');
+                  }
+                });
+              }
+            }
+          ]
+        }
+      ]
+    };
+  }
+
+  window.wizard_cir_cir = Ext.extend(Ext.Window, {
+    constructor: function (cfg) {
+      const config = Ext.applyIf(cfg || {}, {
+        title: 'Wizard Circuit',
+        width: 540,
+        autoHeight: true,
+        layout: 'form',
+        border: false,
+        plain: true,
+        modal: true,
+        resizable: false,
+        closable: true,
+        bodyStyle: 'padding: 10px;',
+        items: [
+          {
+            xtype: 'panel',
+            layout: 'hbox',
+            border: false,
+            bodyStyle: 'margin-bottom: 10px;',
+            items: [
+              { xtype: 'label', text: 'Circuit:', width: 60, style: 'margin-top:4px;margin-right:10px;' },
+              { xtype: 'textfield', id: 'circuit_field', readOnly: true, width: 400 }
+            ]
+          },
+          createGridPanel('used'),
+          createGridPanel('uses'),
+          createGridPanel('service'),
+          createGridPanel('link')
+        ],
+        buttons: [
+          {
+            text: 'Close',
+            handler: function () {
+              this.ownerCt.ownerCt.close();
+            }
+          }
+        ]
+      });
+
+      window.wizard_cir_cir.superclass.constructor.call(this, config);
+
+      this.initWizard = function (cfg) {
+        if (cfg.objectId?.key === 'circ') {
+          circuit_form_id = cfg.objectId.id;
+          Ext.Ajax.request({
+            url: './tools/wizardCircuit/src/index.php',
+            params: { action: 'get_circuit', id: cfg.objectId.id },
+            success: function (result) {
+              const res = Ext.decode(result.responseText);
+              console.log('Loaded circuit data:', res.data);
+              Ext.getCmp('circuit_field').setValue(res.data?.[0]?.NAME || '');
+            }
+          });
+        }
+        this.show();
+      };
+    }
+  });
+});
+
