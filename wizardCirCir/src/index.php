@@ -17,13 +17,18 @@ $role = (isset($_SESSION['roles']['Cramer navigator']['Standart user']) ? 1 : 0)
 
 $con = ksdb_connect('cramer_admin');
 
-function getSQLData($con, $sql)
+function getSQLData($con, $sql, $get_single = false)
 {
 	$q = $con->exec($sql);
 	if (!$q) throw new Exception($q->error());
 	$ar = array();
 	while ($r = $q->fetch($q)) {
-		$ar = $r;
+		if ($get_single) {
+			$ar = $r;
+			break;
+		} else {
+			$ar[] = $r;
+		}
 	}
 
 	return $ar;
@@ -34,13 +39,22 @@ switch ($action) {
 		exit('ads');
 		break;
 	case 'get_circuit':
-		$sql = "select * from CRAMER.CIRCUIT_O t
-		WHERE t.circuitid = " . $_REQUEST['id'];
-		//	exit($sql);
-		sendJSONFromSQL($con, $sql, false);
+		$ar['circuit'] = getSQLData($con, "select t.name from CRAMER.CIRCUIT_O t
+			WHERE t.circuitid = " . $_REQUEST['id'], true);
+		$ar['services'] = getSQLData($con, "SELECT s.* FROM CRAMER.serviceobject_o so
+			JOIN CRAMER.service_o s ON s.serviceid = so.serviceobject2service
+			WHERE so.serviceobject2object = " . $_REQUEST['id']);
+		$ar['links'] = getSQLData($con, "SELECT  l.linkid, l.name FROM CRAMER.linkcircuit_o lc
+			JOIN CRAMER.link_o l ON l.linkid = lc.linkcircuit2link
+			WHERE lc.linkcircuit2circuit = " . $_REQUEST['id']);
+		//	echo __FILE__.' '.__LINE__.'<pre>';print_r($ar).'</pre>';die;
+
+		exit(json_encode(array('success' => true, 'data' => $ar)));
 		break;
-	case 'get_loc':
-		$sql = "select distinct(l.name), l.locationid from CRAMER.location_o l 
+	case 'get_services':
+		$sql = "SELECT s.* FROM CRAMER.serviceobject_o so
+JOIN CRAMER.service_o s ON s.serviceid = so.serviceobject2service
+where so.serviceobject2object = 70237186
 		WHERE rownum < 20 ";
 		if (isset($_REQUEST['query']) && $query = $_REQUEST['query']) {
 			$sql .= "AND l.name LIKE '%" . $query . "%' ";

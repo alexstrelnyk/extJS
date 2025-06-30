@@ -9,6 +9,7 @@ Ext.onReady(function () {
       bodyStyle: 'margin: 10px 0;',
       items: [
         {
+          id: 'grid_' + title,
           xtype: 'grid',
           title: title.charAt(0).toUpperCase() + title.slice(1),
           width: 400,
@@ -98,9 +99,9 @@ Ext.onReady(function () {
             xtype: 'panel',
             layout: 'hbox',
             border: false,
-            bodyStyle: 'margin-bottom: 10px;',
+            bodyStyle: 'padding: 10px 10px 10px 10px;', // top, right, bottom, left
             items: [
-              { xtype: 'label', text: 'Circuit:', width: 60, style: 'margin-top:4px;margin-right:10px;' },
+              { xtype: 'label', text: 'Circuit:', width: 60, style: 'margin-right:10px;margin-top:4px;' },
               { xtype: 'textfield', id: 'circuit_field', readOnly: true, width: 400 }
             ]
           },
@@ -124,19 +125,36 @@ Ext.onReady(function () {
       this.initWizard = function (cfg) {
         if (cfg.objectId?.key === 'circ') {
           circuit_form_id = cfg.objectId.id;
+
           Ext.Ajax.request({
-            url: './tools/wizardCircuit/src/index.php',
+            url: './tools/wizardCirCir/src/index.php',
             params: { action: 'get_circuit', id: cfg.objectId.id },
             success: function (result) {
               const res = Ext.decode(result.responseText);
-              console.log('Loaded circuit data:', res.data);
-              Ext.getCmp('circuit_field').setValue(res.data?.[0]?.NAME || '');
+              if (res.success && res.data) {
+                Ext.getCmp('circuit_field').setValue(res.data.circuit?.NAME || '');
+                console.log(res.data.circuit);
+
+                const links = res.data.links || [];
+                const linkGrid = Ext.getCmp('grid_link');
+                if (linkGrid) {
+                  const store = linkGrid.getStore();
+                  store.removeAll();
+                  links.forEach(link => {
+                    store.add(new store.recordType({
+                      id: link.LINKID,
+                      name: link.NAME
+                    }));
+                  });
+                }
+              }
             }
           });
         }
+
         this.show();
       };
+
     }
   });
 });
-
