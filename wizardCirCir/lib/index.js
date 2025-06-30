@@ -1,6 +1,88 @@
 Ext.onReady(function () {
   Ext.QuickTips.init();
 
+  var cir_id = false;
+
+  function populateGridFromData(gridId, records) {
+    const grid = Ext.getCmp(gridId);
+    if (grid) {
+      const store = grid.getStore();
+      store.removeAll();
+      records.forEach(item => {
+        store.add(new store.recordType({
+          id: item.ID,
+          name: item.NAME
+        }));
+      });
+    }
+  }
+
+
+  function createAddWindow(title, gridPanel) {
+    const formPanel = new Ext.form.FormPanel({
+      labelWidth: 50,
+      bodyStyle: 'padding:10px;',
+      width: 300,
+      height: 120,
+      defaults: { anchor: '95%' },
+      items: [
+        { xtype: 'textfield', name: 'id', fieldLabel: 'Id', allowBlank: false },
+        { xtype: 'textfield', name: 'name', fieldLabel: 'Name', allowBlank: false }
+      ],
+      buttons: [
+        {
+          text: 'Add',
+          handler: function () {
+            if (formPanel.getForm().isValid()) {
+              const values = formPanel.getForm().getValues();
+
+              Ext.Ajax.request({
+                url: './tools/wizardCirCir/src/index.php',
+                params: {
+                  action: 'add_' + title,
+                  cir_id: cir_id,
+                  id: values.id,
+                  name: values.name
+                },
+                success: function () {
+                  console.log('Add ' + title + ' successful');
+
+                  const store = gridPanel.items.get(0).getStore();
+                  store.add(new store.recordType({ id: values.id, name: values.name }));
+
+                  formPanel.ownerCt.close();
+                },
+                failure: function () {
+                  Ext.Msg.alert('Error', 'Failed to add ' + title);
+                }
+              });
+            }
+          }
+        },
+        {
+          text: 'Close',
+          handler: function () {
+            formPanel.ownerCt.close();
+          }
+        }
+      ]
+    });
+
+    const win = new Ext.Window({
+      title: 'Add ' + title,
+      modal: true,
+      layout: 'fit',
+      width: 320,
+      height: 160,
+      items: [formPanel]
+    });
+
+    win.show();
+  }
+
+
+
+
   function createGridPanel(title) {
     return {
       xtype: 'panel',
@@ -42,14 +124,13 @@ Ext.onReady(function () {
             {
               text: 'Add',
               handler: function () {
-                Ext.Ajax.request({
-                  url: './tools/wizardCirCir/src/index.php',
-                  params: { action: 'add_' + title },
-                  success: function () {
-                    console.log('Add ' + title + ' successful');
-                  }
-                });
+                const grid = Ext.getCmp('grid_' + title.toLowerCase());
+                if (grid) {
+                  const store = grid.getStore();
+                  createAddWindow(title, store);
+                }
               }
+
             },
             {
               text: 'Del',
@@ -99,7 +180,7 @@ Ext.onReady(function () {
             xtype: 'panel',
             layout: 'hbox',
             border: false,
-            bodyStyle: 'padding: 10px 10px 10px 10px;', // top, right, bottom, left
+            bodyStyle: 'padding: 10px 10px 10px 10px;',
             items: [
               { xtype: 'label', text: 'Circuit:', width: 60, style: 'margin-right:10px;margin-top:4px;' },
               { xtype: 'textfield', id: 'circuit_field', readOnly: true, width: 400 }
@@ -124,7 +205,7 @@ Ext.onReady(function () {
 
       this.initWizard = function (cfg) {
         if (cfg.objectId?.key === 'circ') {
-          circuit_form_id = cfg.objectId.id;
+          cir_id = cfg.objectId.id;
 
           Ext.Ajax.request({
             url: './tools/wizardCirCir/src/index.php',
@@ -135,22 +216,15 @@ Ext.onReady(function () {
                 Ext.getCmp('circuit_field').setValue(res.data.circuit?.NAME || '');
                 console.log(res.data.circuit);
 
-                const links = res.data.links || [];
-                const linkGrid = Ext.getCmp('grid_link');
-                if (linkGrid) {
-                  const store = linkGrid.getStore();
-                  store.removeAll();
-                  links.forEach(link => {
-                    store.add(new store.recordType({
-                      id: link.LINKID,
-                      name: link.NAME
-                    }));
-                  });
-                }
+                populateGridFromData('grid_link', res.data.links || []);
+                populateGridFromData('grid_service', res.data.services || []);
+                // populateGridFromData('grid_used', res.data.used || []);
+                // populateGridFromData('grid_uses', res.data.uses || []);
               }
             }
           });
         }
+
 
         this.show();
       };

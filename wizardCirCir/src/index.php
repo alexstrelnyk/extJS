@@ -35,16 +35,28 @@ function getSQLData($con, $sql, $get_single = false)
 }
 
 switch ($action) {
-	case 'add_used':
-		exit('ads');
+	case 'add_link':
+		$sql = "begin null; 
+INSERT INTO CRAMER.LINKCIRCUIT_O (LINKCIRCUIT2CIRCUIT, LINKCIRCUIT2LINK)
+VALUES (" . $_REQUEST['cir_id'] . ", " . $_REQUEST['id'] . ");
+ end;";
+		echo __FILE__ . ' ' . __LINE__ . '<pre>';
+		print_r($sql) . '</pre>';
+		die;
+		$q = $con->exec($sql);
+		if (!$q) {
+			return_error($con->error());
+		} else {
+			sendJSONOk();
+		};
 		break;
 	case 'get_circuit':
 		$ar['circuit'] = getSQLData($con, "select t.name from CRAMER.CIRCUIT_O t
 			WHERE t.circuitid = " . $_REQUEST['id'], true);
-		$ar['services'] = getSQLData($con, "SELECT s.* FROM CRAMER.serviceobject_o so
+		$ar['services'] = getSQLData($con, "SELECT s.SERVICEID id, s.name FROM CRAMER.serviceobject_o so
 			JOIN CRAMER.service_o s ON s.serviceid = so.serviceobject2service
 			WHERE so.serviceobject2object = " . $_REQUEST['id']);
-		$ar['links'] = getSQLData($con, "SELECT  l.linkid, l.name FROM CRAMER.linkcircuit_o lc
+		$ar['links'] = getSQLData($con, "SELECT  l.linkid id, l.name FROM CRAMER.linkcircuit_o lc
 			JOIN CRAMER.link_o l ON l.linkid = lc.linkcircuit2link
 			WHERE lc.linkcircuit2circuit = " . $_REQUEST['id']);
 		//	echo __FILE__.' '.__LINE__.'<pre>';print_r($ar).'</pre>';die;
