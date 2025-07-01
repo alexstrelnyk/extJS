@@ -53,6 +53,12 @@ VALUES (" . $_REQUEST['cir_id'] . ", " . $_REQUEST['id'] . ");
 	case 'get_circuit':
 		$ar['circuit'] = getSQLData($con, "select t.name from CRAMER.CIRCUIT_O t
 			WHERE t.circuitid = " . $_REQUEST['id'], true);
+		$ar['used'] = getSQLData($con, "select c.circuitid id, c.name from CRAMER.CIRCUITCIRCUIT_o ce
+			JOIN CRAMER.CIRCUIT_O c ON c.circuitid = ce.usedby2circuit
+			WHERE ce.usedby2circuit = " . $_REQUEST['id']);
+		$ar['uses'] = getSQLData($con, "select c.circuitid id, c.name from CRAMER.CIRCUITCIRCUIT_o ce
+			JOIN CRAMER.CIRCUIT_O c ON c.circuitid = ce.uses2circuit
+			WHERE ce.uses2circuit = " . $_REQUEST['id']);
 		$ar['services'] = getSQLData($con, "SELECT s.SERVICEID id, s.name FROM CRAMER.serviceobject_o so
 			JOIN CRAMER.service_o s ON s.serviceid = so.serviceobject2service
 			WHERE so.serviceobject2object = " . $_REQUEST['id']);

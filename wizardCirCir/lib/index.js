@@ -216,10 +216,10 @@ Ext.onReady(function () {
                 Ext.getCmp('circuit_field').setValue(res.data.circuit?.NAME || '');
                 console.log(res.data.circuit);
 
+                populateGridFromData('grid_used', res.data.used || []);
+                populateGridFromData('grid_uses', res.data.uses || []);
                 populateGridFromData('grid_link', res.data.links || []);
                 populateGridFromData('grid_service', res.data.services || []);
-                // populateGridFromData('grid_used', res.data.used || []);
-                // populateGridFromData('grid_uses', res.data.uses || []);
               }
             }
           });
