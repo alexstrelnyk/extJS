@@ -19,44 +19,69 @@ Ext.onReady(function () {
 
 
   function createAddWindow(title, gridPanel) {
+    const comboId = 'add_combo_' + title;
+
+    const comboStore = new Ext.data.JsonStore({
+      url: './tools/wizardCirCir/src/index.php',
+      baseParams: { action: 'get_' + title },
+      root: 'data',
+      fields: ['ID', 'NAME']
+    });
+
+    const combo = new Ext.form.ComboBox({
+      id: comboId,
+      fieldLabel: 'ID or NAME',
+      store: comboStore,
+      valueField: 'ID',
+      displayField: 'NAME',
+      mode: 'remote',
+      triggerAction: 'all',
+      minChars: 2,
+      queryDelay: 300,
+      typeAhead: false,
+      forceSelection: true,
+      allowBlank: false,
+      anchor: '95%'
+    });
+
     const formPanel = new Ext.form.FormPanel({
-      labelWidth: 50,
+      labelWidth: 80,
       bodyStyle: 'padding:10px;',
-      width: 300,
+      width: 320,
       height: 120,
-      defaults: { anchor: '95%' },
-      items: [
-        { xtype: 'textfield', name: 'id', fieldLabel: 'Id', allowBlank: false },
-        { xtype: 'textfield', name: 'name', fieldLabel: 'Name', allowBlank: false }
-      ],
+      items: [combo],
       buttons: [
         {
           text: 'Add',
           handler: function () {
-            if (formPanel.getForm().isValid()) {
-              const values = formPanel.getForm().getValues();
+            const selectedId = combo.getValue();
+            const selectedName = combo.getRawValue();
 
-              Ext.Ajax.request({
-                url: './tools/wizardCirCir/src/index.php',
-                params: {
-                  action: 'add_' + title,
-                  cir_id: cir_id,
-                  id: values.id,
-                  name: values.name
-                },
-                success: function () {
-                  console.log('Add ' + title + ' successful');
-
-                  const store = gridPanel.items.get(0).getStore();
-                  store.add(new store.recordType({ id: values.id, name: values.name }));
-
-                  formPanel.ownerCt.close();
-                },
-                failure: function () {
-                  Ext.Msg.alert('Error', 'Failed to add ' + title);
-                }
-              });
+            if (!selectedId || selectedId.trim() === '') {
+              Ext.Msg.alert('Error', 'Please select a value from the list.');
+              return;
             }
+
+            Ext.Ajax.request({
+              url: './tools/wizardCirCir/src/index.php',
+              params: {
+                action: 'add_' + title,
+                cir_id: cir_id,
+                id: selectedId,
+                name: selectedName
+              },
+              success: function () {
+                console.log('Add ' + title + ' successful');
+
+                const store = gridPanel.items.get(0).getStore();
+                store.add(new store.recordType({ id: selectedId, name: selectedName }));
+
+                formPanel.ownerCt.close();
+              },
+              failure: function () {
+                Ext.Msg.alert('Error', 'Failed to add ' + title);
+              }
+            });
           }
         },
         {
@@ -72,13 +97,14 @@ Ext.onReady(function () {
       title: 'Add ' + title,
       modal: true,
       layout: 'fit',
-      width: 320,
+      width: 360,
       height: 160,
       items: [formPanel]
     });
 
     win.show();
   }
+
 
 
 
@@ -140,18 +166,6 @@ Ext.onReady(function () {
                   params: { action: 'del_' + title },
                   success: function () {
                     console.log('Delete ' + title + ' successful');
-                  }
-                });
-              }
-            },
-            {
-              text: 'Save',
-              handler: function () {
-                Ext.Ajax.request({
-                  url: './tools/wizardCirCir/src/index.php',
-                  params: { action: 'save_' + title },
-                  success: function () {
-                    console.log('Save ' + title + ' successful');
                   }
                 });
               }
