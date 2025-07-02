@@ -57,11 +57,38 @@ switch ($action) {
 			exit(json_encode(array('success' => false, 'data' => [])));
 		}
 		break;
+	case 'get_used':
+		$sql = "select c.circuitid id, c.name from CRAMER.CIRCUIT_O c
+		WHERE rownum < 20 ";
+		if (isset($_REQUEST['query']) && $query = $_REQUEST['query']) {
+			$sql .= "AND (c.circuitid LIKE '%" . $query . "%' OR c.name LIKE '%" . $query . "%')";
+		}
+
+		sendJSONFromSQL($con, $sql, false);
+		break;
+	case 'get_uses':
+		$sql = "select c.circuitid id, c.name from CRAMER.CIRCUIT_O c
+		WHERE rownum < 20 ";
+		if (isset($_REQUEST['query']) && $query = $_REQUEST['query']) {
+			$sql .= "AND (c.circuitid LIKE '%" . $query . "%' OR c.name LIKE '%" . $query . "%')";
+		}
+
+		sendJSONFromSQL($con, $sql, false);
+		break;
 	case 'get_service':
 		$sql = "select s.serviceid id, s.name from CRAMER.service_o s
 		WHERE rownum < 20 ";
 		if (isset($_REQUEST['query']) && $query = $_REQUEST['query']) {
 			$sql .= "AND (s.serviceid LIKE '%" . $query . "%' OR s.name LIKE '%" . $query . "%')";
+		}
+
+		sendJSONFromSQL($con, $sql, false);
+		break;
+	case 'get_link':
+		$sql = "select l.linkid id, l.name from CRAMER.link_o l
+		WHERE rownum < 20 ";
+		if (isset($_REQUEST['query']) && $query = $_REQUEST['query']) {
+			$sql .= "AND (l.linkid LIKE '%" . $query . "%' OR l.name LIKE '%" . $query . "%')";
 		}
 
 		sendJSONFromSQL($con, $sql, false);
