@@ -3,6 +3,25 @@ Ext.onReady(function () {
 
   var cir_id = false;
 
+  function refreshGrids() {
+
+    Ext.Ajax.request({
+      url: './tools/wizardCirCir/src/index.php',
+      params: { action: 'get_circuit', id: cir_id },
+      success: function (result) {
+        const res = Ext.decode(result.responseText);
+        if (res.success && res.data) {
+          Ext.getCmp('circuit_field').setValue(res.data.circuit?.NAME || '');
+          console.log(res.data.circuit);
+
+          populateGridFromData('grid_used', res.data.used || []);
+          populateGridFromData('grid_uses', res.data.uses || []);
+          populateGridFromData('grid_link', res.data.links || []);
+          populateGridFromData('grid_service', res.data.services || []);
+        }
+      }
+    });
+  }
   function populateGridFromData(gridId, records) {
     const grid = Ext.getCmp(gridId);
     if (grid) {
@@ -207,6 +226,11 @@ Ext.onReady(function () {
         ],
         buttons: [
           {
+            text: 'Refresh',
+            handler: function () {
+              refreshGrids();
+            }
+          }, {
             text: 'Close',
             handler: function () {
               this.ownerCt.ownerCt.close();
@@ -221,22 +245,7 @@ Ext.onReady(function () {
         if (cfg.objectId?.key === 'circ') {
           cir_id = cfg.objectId.id;
 
-          Ext.Ajax.request({
-            url: './tools/wizardCirCir/src/index.php',
-            params: { action: 'get_circuit', id: cfg.objectId.id },
-            success: function (result) {
-              const res = Ext.decode(result.responseText);
-              if (res.success && res.data) {
-                Ext.getCmp('circuit_field').setValue(res.data.circuit?.NAME || '');
-                console.log(res.data.circuit);
-
-                populateGridFromData('grid_used', res.data.used || []);
-                populateGridFromData('grid_uses', res.data.uses || []);
-                populateGridFromData('grid_link', res.data.links || []);
-                populateGridFromData('grid_service', res.data.services || []);
-              }
-            }
-          });
+          refreshGrids();
         }
 
 
