@@ -42,7 +42,7 @@ switch ($action) {
 			$ar['used'] = getSQLData($con, "select c.circuitid id, c.name from CRAMER.CIRCUITCIRCUIT_o ce
 				JOIN CRAMER.CIRCUIT_O c ON c.circuitid = ce.usedby2circuit
 				WHERE ce.usedby2circuit = " . $cir_id);
-			$ar['uses'] = getSQLData($con, "select c.circuitid id, c.name from CRAMER.CIRCUITCIRCUIT_o ce
+			$ar['uses'] = getSQLData($con, "select ce.usedby2circuit id, c.name from CRAMER.CIRCUITCIRCUIT_o ce
 				JOIN CRAMER.CIRCUIT_O c ON c.circuitid = ce.uses2circuit
 				WHERE ce.uses2circuit = " . $cir_id);
 			$ar['services'] = getSQLData($con, "SELECT s.SERVICEID id, s.name FROM CRAMER.serviceobject_o so
@@ -67,10 +67,11 @@ switch ($action) {
 		sendJSONFromSQL($con, $sql, false);
 		break;
 	case 'get_uses':
-		$sql = "select c.circuitid id, c.name from CRAMER.CIRCUIT_O c
+		$sql = "select ce.usedby2circuit id, c.name from CRAMER.CIRCUITCIRCUIT_o ce
+JOIN CRAMER.CIRCUIT_O c ON c.circuitid = ce.uses2circuit
 		WHERE rownum < 20 ";
 		if (isset($_REQUEST['query']) && $query = $_REQUEST['query']) {
-			$sql .= "AND (c.circuitid LIKE '%" . $query . "%' OR c.name LIKE '%" . $query . "%')";
+			$sql .= "AND (ce.uses2circuit LIKE '%" . $query . "%' OR c.name LIKE '%" . $query . "%')";
 		}
 
 		sendJSONFromSQL($con, $sql, false);
@@ -93,12 +94,207 @@ switch ($action) {
 
 		sendJSONFromSQL($con, $sql, false);
 		break;
+	case 'add_uses':
+		$sql = "
+		
+		DECLARE
+    o_errorcode            NUMBER;
+    o_errortext            VARCHAR2(4000);
+	";
+		if ($cir_id = $_REQUEST['cir_id']) {
+			$sql .= "i_usescircuitid   NUMBER := " . $cir_id . "; ";
+		}
+		if ($id = $_REQUEST['id']) {
+			//		$sql .= "i_usedbycircuitid   NUMBER := ".$id."; ";
+		}
+		$sql .= "i_usedbycircuitid   NUMBER := 69705418; ";
+		$sql .= "i_circuitnumber   NUMBER := 1; ";
+		$sql .= "i_routesequence   NUMBER := 1; ";
+		$sql .= "
+BEGIN
+
+  CRAMER.getsession();
+
+    PKGCIRCUIT.addcircuit2circuit(
+o_errorcode, 
+o_errortext, 
+i_usedbycircuitid, 
+i_usescircuitid, 
+i_circuitnumber, 
+i_routesequence 
+    );
+
+    DBMS_OUTPUT.put_line('Error Code: ' || o_errorcode);
+    DBMS_OUTPUT.put_line('Error Text: ' || o_errortext);
+	
+  :ERRCODE := o_errorcode;
+  :ERRTEXT := o_errortext;
+END;
+";
+
+		$pcon = $db_cfg['cramer_admin'];
+
+		$con = oci_connect($pcon['login'], $pcon['pass'], $pcon['param']);
+		$st = oci_parse($con, $sql);
+		oci_bind_by_name($st, ':ERRCODE', $errorcode, 10);
+		oci_bind_by_name($st, ':ERRTEXT', $errortext, 4000);
+
+
+
+		if (!oci_execute($st)) {
+			$e = oci_error($st);
+			echo json_encode(['success' => false, 'message' => 'Oracle Error: ' . $e['message']]);
+			oci_rollback($con);
+			exit;
+		}
+
+		if ($errorcode != 0) {
+			echo json_encode(['success' => false, 'message' => 'Procedure Error: ' . $errortext]);
+			oci_rollback($con);
+			exit;
+		}
+
+		oci_commit($con);
+		echo json_encode(['success' => true, 'data' => ['errorcode' => $errorcode, 'errortext' => $errortext,]]);
+		break;
+	case 'del_uses':
+		$sql = "
+		
+		DECLARE
+    o_errorcode            NUMBER;
+    o_errortext            VARCHAR2(4000);
+	";
+		if ($cir_id = $_REQUEST['cir_id']) {
+			$sql .= "i_usescircuitid   NUMBER := " . $cir_id . "; ";
+		}
+		if ($id = $_REQUEST['id']) {
+			$sql .= "i_usedbycircuitid   NUMBER := " . $id . "; ";
+		}
+		//	$sql .= "i_usedbycircuitid   NUMBER := 69705418; ";
+		//	$sql .= "i_usescircuitid   NUMBER := 70414789; ";
+		$sql .= "i_circuitnumber   NUMBER := 1; ";
+		$sql .= "i_routesequence   NUMBER := 1; ";
+		$sql .= "
+BEGIN
+
+  CRAMER.getsession();
+
+    PKGCIRCUIT.removecircuitfromcircuit(
+o_errorcode, 
+o_errortext, 
+i_usedbycircuitid, 
+i_usescircuitid, 
+i_routesequence
+    );
+
+    DBMS_OUTPUT.put_line('Error Code: ' || o_errorcode);
+    DBMS_OUTPUT.put_line('Error Text: ' || o_errortext);
+	
+  :ERRCODE := o_errorcode;
+  :ERRTEXT := o_errortext;
+END;
+";
+		//		echo __FILE__.' '.__LINE__.'<pre>';print_r($sql).'</pre>';die;
+
+		$pcon = $db_cfg['cramer_admin'];
+
+		$con = oci_connect($pcon['login'], $pcon['pass'], $pcon['param']);
+		$st = oci_parse($con, $sql);
+		oci_bind_by_name($st, ':ERRCODE', $errorcode, 10);
+		oci_bind_by_name($st, ':ERRTEXT', $errortext, 4000);
+
+
+
+		if (!oci_execute($st)) {
+			$e = oci_error($st);
+			echo json_encode(['success' => false, 'message' => 'Oracle Error: ' . $e['message']]);
+			oci_rollback($con);
+			exit;
+		}
+
+		if ($errorcode != 0) {
+			echo json_encode(['success' => false, 'message' => 'Procedure Error: ' . $errortext]);
+			oci_rollback($con);
+			exit;
+		}
+
+		oci_commit($con);
+		echo json_encode(['success' => true, 'data' => ['errorcode' => $errorcode, 'errortext' => $errortext,]]);
+		break;
+	case 'add_service':
+		$sql = "
+		
+		DECLARE
+    o_errorcode            NUMBER;
+    o_errortext            VARCHAR2(4000);
+	";
+		if ($cir_id = $_REQUEST['cir_id']) {
+			$sql .= "i_objectid   NUMBER := " . $cir_id . "; ";
+		}
+		if ($id = $_REQUEST['id']) {
+			$sql .= "i_serviceid   NUMBER := " . $id . "; ";
+		}
+		$sql .= "i_dimobjectid   NUMBER := 3; ";
+		$sql .= "i_relationshipid   NUMBER := 1800000001; ";
+		$sql .= "i_sequence   NUMBER := 1; ";
+		$sql .= "
+BEGIN
+
+  CRAMER.getsession();
+
+    pkgservice.addobject2service(
+o_errorcode, 
+o_errortext, 
+i_serviceid, 
+i_dimobjectid, 
+i_objectid, 
+i_relationshipid, 
+i_sequence
+    );
+
+    DBMS_OUTPUT.put_line('Error Code: ' || o_errorcode);
+    DBMS_OUTPUT.put_line('Error Text: ' || o_errortext);
+	
+  :ERRCODE := o_errorcode;
+  :ERRTEXT := o_errortext;
+END;
+";
+		//	echo __FILE__.' '.__LINE__.'<pre>';print_r($sql).'</pre>';die;
+
+		$pcon = $db_cfg['cramer_admin'];
+
+		$con = oci_connect($pcon['login'], $pcon['pass'], $pcon['param']);
+		$st = oci_parse($con, $sql);
+		oci_bind_by_name($st, ':ERRCODE', $errorcode, 10);
+		oci_bind_by_name($st, ':ERRTEXT', $errortext, 4000);
+
+
+
+		if (!oci_execute($st)) {
+			$e = oci_error($st);
+			echo json_encode(['success' => false, 'message' => 'Oracle Error: ' . $e['message']]);
+			oci_rollback($con);
+			exit;
+		}
+
+		if ($errorcode != 0) {
+			echo json_encode(['success' => false, 'message' => 'Procedure Error: ' . $errortext]);
+			oci_rollback($con);
+			exit;
+		}
+
+		oci_commit($con);
+		echo json_encode(['success' => true, 'data' => ['errorcode' => $errorcode, 'errortext' => $errortext,]]);
+		break;
 	case 'add_link':
 		$sql = "
 		
 		DECLARE
     o_errorcode            NUMBER;
     o_errortext            VARCHAR2(4000);
+    i_validatetypes            VARCHAR2(4000);
+    I_ROUTEDIRECTION            VARCHAR2(4000);
+    I_LOADBALANCERATIO            VARCHAR2(4000);
 	";
 		if ($cir_id = $_REQUEST['cir_id']) {
 			$sql .= "i_circuitid   NUMBER := " . $cir_id . "; ";
@@ -130,6 +326,8 @@ i_loadbalanceratio
     DBMS_OUTPUT.put_line('Error Code: ' || o_errorcode);
     DBMS_OUTPUT.put_line('Error Text: ' || o_errortext);
 	
+  :ERRCODE := o_errorcode;
+  :ERRTEXT := o_errortext;
 END;
 ";
 		//	echo __FILE__.' '.__LINE__.'<pre>';print_r($sql).'</pre>';die;
@@ -137,152 +335,11 @@ END;
 		$pcon = $db_cfg['cramer_admin'];
 
 		$con = oci_connect($pcon['login'], $pcon['pass'], $pcon['param']);
-
 		$st = oci_parse($con, $sql);
-
-		try {
-			oci_execute($st);
-		} catch (Exception $e) {
-			echo json_encode(array('success' => false, 'message' => 'Error divide ' . $e->getMessage()));
-		};
-
-		if (oci_error()) {
-			$e = oci_error();
-			echo json_encode(array('success' => false, 'message' => $e['message']));
-			oci_rollback($con);
-		} else {
-			oci_commit($con);
-			echo json_encode(array('success' => true, 'data' => array('circuit_name' => $circuit_name)));
-		}
-		break;
-	case 'create_circuit':
-		$circuitTypeId = false;
-		$package_name = false;
-		$create_without_def = false;
-		$fields = "";
-		if (isset($_REQUEST['circuitTypeId']) && $circuitTypeId = $_REQUEST['circuitTypeId']) {
-			$package_name_sql = "
-	select t.circuittype2porttype from CRAMER.circuittype_m t 
-	where t.CIRCUITTYPEID = $circuitTypeId";
-			if ($circuit_row = getSQLData($con, $package_name_sql)) {
-				if ($circuit_row['CIRCUITTYPE2PORTTYPE']) {
-					$create_without_def = true;
-				}
-			}
-		}
-
-		$sql = "
-		DECLARE
-    o_errorcode            NUMBER;
-    o_errortext            VARCHAR2(4000);
-    o_circuitid            NUMBER;
-	";
-		if (isset($_REQUEST['name']) && $query = $_REQUEST['name']) {
-			$sql .= "i_name   VARCHAR2(100) := '" . $query . "'; 
-			";
-		}
-		if (isset($_REQUEST['startLocId']) && $query = $_REQUEST['startLocId']) {
-			$sql .= "i_startlocationid   NUMBER := " . $query . "; 
-			";
-		}
-		if (isset($_REQUEST['startNodeId']) && $query = $_REQUEST['startNodeId']) {
-			$sql .= "i_startnodeid   NUMBER := " . $query . "; 
-			";
-		}
-		if (isset($_REQUEST['startPortId']) && $query = $_REQUEST['startPortId']) {
-			$sql .= "i_startportid   NUMBER := " . $query . "; 
-			";
-		}
-		if (isset($_REQUEST['endLocId']) && $query = $_REQUEST['endLocId']) {
-			$sql .= "i_endlocationid   NUMBER := " . $query . "; 
-			";
-		}
-		if (isset($_REQUEST['endNodeId']) && $query = $_REQUEST['endNodeId']) {
-			$sql .= "i_endnodeid   NUMBER := " . $query . "; 
-			";
-		}
-		if (isset($_REQUEST['endPortId']) && $query = $_REQUEST['endPortId']) {
-			$sql .= "i_endportid   NUMBER := " . $query . "; 
-			";
-		}
-		if (!$create_without_def && isset($_REQUEST['circuitdef']) && $query = $_REQUEST['circuitdef']) {
-			$sql .= "i_circuitdef   NUMBER := " . $query . "; 
-			";
-		}
-		if (isset($_REQUEST['bandwidthId']) && $query = $_REQUEST['bandwidthId']) {
-			$sql .= "i_bandwidth   NUMBER := " . $query . "; 
-			";
-		}
-		if ($circuitTypeId) {
-			$sql .= "i_circuittype   NUMBER := " . $circuitTypeId . "; 
-			";
-		}
-
-		if ($create_without_def) {
-			$package_name = "CREATEDATACIRCUIT";
-			$fields = "
-o_errorcode, 
-o_errortext, 
-o_circuitid, 
-o_startlogportid, 
-o_endlogportid, 
-i_circuitname, 
-i_circuittypeid, 
-i_startlocid, 
-i_endlocid, 
-i_startnodeid, 
-i_endnodeid, 
-i_startportid, 
-i_endportid, 
-i_bandwidthid, 
-i_bandwidthkbps, 
-i_direction";
-		} else {
-			$package_name = "CREATECIRCUIT";
-			$fields = "
-o_errorcode, 
-o_errortext, 
-o_circuitid, 
-i_name, 
-i_startlocationid, 
-i_startnodeid, 
-i_startportid, 
-i_endlocationid, 
-i_endnodeid, 
-i_endportid, 
-i_circuitdef, 
-i_bandwidth
-";
-		}
-
-		$sql .= "
-	
-BEGIN
-
-  CRAMER.getsession();
-  
-  PKGCIRCUIT.$package_name(
-    $fields
-  );
-
-  IF o_errorcode != 0 THEN
-    RAISE_APPLICATION_ERROR(-20001, 'Package Error: ' || o_errortext);
-  END IF;
-
-  :CIRID := o_circuitid;
-  :ERRCODE := o_errorcode;
-  :ERRTEXT := o_errortext;
-
-END;
-
-";
-		$pcon = $db_cfg['cramer_admin'];
-
-		$con = oci_connect($pcon['login'], $pcon['pass'], $pcon['param']);
-		$st = oci_parse($con, $sql);
-		oci_bind_by_name($st, ':CIRID', $circuit_id, 10);
 		oci_bind_by_name($st, ':ERRCODE', $errorcode, 10);
 		oci_bind_by_name($st, ':ERRTEXT', $errortext, 4000);
+
+
 
 		if (!oci_execute($st)) {
 			$e = oci_error($st);
@@ -297,14 +354,7 @@ END;
 			exit;
 		}
 
-		if (empty($circuit_id)) {
-			echo json_encode(['success' => false, 'message' => 'Error: New circuit ID is empty.']);
-			oci_rollback($con);
-			exit;
-		}
-
 		oci_commit($con);
-		echo json_encode(['success' => true, 'data' => ['circuit_id' => $circuit_id]]);
-
+		echo json_encode(['success' => true, 'data' => ['errorcode' => $errorcode, 'errortext' => $errortext,]]);
 		break;
 }

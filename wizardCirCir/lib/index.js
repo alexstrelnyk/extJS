@@ -12,12 +12,11 @@ Ext.onReady(function () {
         const res = Ext.decode(result.responseText);
         if (res.success && res.data) {
           Ext.getCmp('circuit_field').setValue(res.data.circuit?.NAME || '');
-          console.log(res.data.circuit);
 
           populateGridFromData('grid_used', res.data.used || []);
           populateGridFromData('grid_uses', res.data.uses || []);
-          populateGridFromData('grid_link', res.data.links || []);
           populateGridFromData('grid_service', res.data.services || []);
+          populateGridFromData('grid_link', res.data.links || []);
         }
       }
     });
@@ -89,16 +88,19 @@ Ext.onReady(function () {
                 id: selectedId,
                 name: selectedName
               },
-              success: function () {
-                console.log('Add ' + title + ' successful');
+              success: function (response) {
 
-                const store = gridPanel.items.get(0).getStore();
-                store.add(new store.recordType({ id: selectedId, name: selectedName }));
+                const res = Ext.decode(response.responseText);
+                if (res.success) {
+                  const grid = Ext.getCmp('grid_' + title.toLowerCase());
+                  const store = grid.getStore();
+                  store.add(new store.recordType({ id: selectedId, name: selectedName }));
 
-                formPanel.ownerCt.close();
-              },
-              failure: function () {
-                Ext.Msg.alert('Error', 'Failed to add ' + title);
+                  formPanel.ownerCt.close();
+                } else {
+                  Ext.Msg.alert('Error', res.message);
+                }
+
               }
             });
           }
@@ -180,15 +182,45 @@ Ext.onReady(function () {
             {
               text: 'Del',
               handler: function () {
-                Ext.Ajax.request({
-                  url: './tools/wizardCirCir/src/index.php',
-                  params: { action: 'del_' + title },
-                  success: function () {
-                    console.log('Delete ' + title + ' successful');
+                const grid = Ext.getCmp('grid_' + title.toLowerCase());
+                if (grid) {
+                  const selectionModel = grid.getSelectionModel();
+                  const selected = selectionModel.getSelected();
+
+                  if (!selected) {
+                    Ext.Msg.alert('Error', 'Please select some row');
+                    return;
                   }
-                });
+
+                  Ext.Msg.confirm('Confirm', 'Are you sure you want to delete this record?', function (btn) {
+                    if (btn === 'yes') {
+                      const recordId = selected.get('id');
+
+                      Ext.Ajax.request({
+                        url: './tools/wizardCirCir/src/index.php',
+                        params: {
+                          action: 'del_' + title,
+                          cir_id: cir_id,
+                          id: recordId
+                        },
+                        success: function (response) {
+                          const res = Ext.decode(response.responseText);
+                          if (res.success) {
+                            console.log('Delete ' + title + ' successful');
+                            const store = grid.getStore();
+                            store.remove(selected);
+                          } else {
+                            Ext.Msg.alert('Error', res.message);
+                          }
+                        }
+                      });
+                    }
+                  });
+                }
               }
             }
+
+
           ]
         }
       ]
