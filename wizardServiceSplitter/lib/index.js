@@ -3,11 +3,114 @@ Ext.onReady(function () {
 
   var cir_id = false;
 
+  function createRemoteCombo(name, value) {
+    return new Ext.form.ComboBox({
+      fieldLabel: name.charAt(0) + name.slice(1).toLowerCase(),
+      name: name,
+      value: value,
+      store: new Ext.data.JsonStore({
+        url: './tools/wizardServiceSplitter/src/index.php',
+        baseParams: { action: 'get_' + name.toLowerCase() },
+        root: 'data',
+        fields: ['ID', 'NAME']
+      }),
+      valueField: 'ID',
+      displayField: 'NAME',
+      hiddenName: name,
+      mode: 'remote',
+      triggerAction: 'all',
+      minChars: 2,
+      queryDelay: 300,
+      forceSelection: true,
+      typeAhead: false,
+      allowBlank: false,
+      anchor: '95%'
+    });
+  }
+
+
+
+  function openEditWindow(record) {
+    const form = new Ext.form.FormPanel({
+      labelWidth: 70,
+      bodyStyle: 'padding:10px;',
+      width: 400,
+      height: 240,
+      defaults: { anchor: '95%', allowBlank: false },
+      items: [
+        {
+          xtype: 'textfield',
+          name: 'NAME',
+          fieldLabel: 'Name',
+          value: record.get('NAME'),
+          readOnly: true
+        },
+        {
+          xtype: 'textfield',
+          name: 'SERVICE',
+          fieldLabel: 'Service',
+          value: record.get('SERVICE'),
+          readOnly: true
+        },
+        createRemoteCombo('LOCATION', record.get('LOCATION')),
+        createRemoteCombo('NODE', record.get('NODE')),
+        createRemoteCombo('PORT', record.get('PORT'))
+      ],
+      buttons: [
+        {
+          text: 'Save',
+          handler: function () {
+            if (form.getForm().isValid()) {
+              const values = form.getForm().getValues();
+              Ext.Ajax.request({
+                url: './tools/wizardServiceSplitter/src/index.php',
+                params: {
+                  action: 'save_ser_spl',
+                  circuit_id: record.get('CIRCUITID'),
+                  ...values
+                },
+                success: function () {
+                  record.set('LOCATION', values.LOCATION);
+                  record.set('NODE', values.NODE);
+                  record.set('PORT', values.PORT);
+                  record.commit();
+                  form.ownerCt.close();
+                },
+                failure: function () {
+                  Ext.Msg.alert('Error', 'Failed to save');
+                }
+              });
+            }
+          }
+        },
+        {
+          text: 'Cancel',
+          handler: function () {
+            form.ownerCt.close();
+          }
+        }
+      ]
+    });
+
+    const win = new Ext.Window({
+      title: 'Edit Entry',
+      modal: true,
+      layout: 'fit',
+      width: 420,
+      height: 300,
+      items: [form]
+    });
+
+    win.show();
+  }
+
+
+
   window.wizard_ser_spl = Ext.extend(Ext.Window, {
     constructor: function (cfg) {
       const config = Ext.applyIf(cfg || {}, {
         title: 'Wizard Service Splitter',
-        width: 540,
+        width: 740,
         autoHeight: true,
         layout: 'form',
         border: false,
@@ -38,46 +141,37 @@ Ext.onReady(function () {
                 xtype: 'grid',
                 height: 150,
                 store: new Ext.data.ArrayStore({
-                  fields: ['id', 'name'],
+                  fields: ['NAME', 'SERVICE', 'LOCATION', 'NODE', 'PORT'],
                   data: []
                 }),
+                listeners: {
+                  rowdblclick: function (grid, rowIndex) {
+                    const record = grid.getStore().getAt(rowIndex);
+                    openEditWindow(record);
+                  }
+                },
                 columns: [
-                  { header: 'Id', dataIndex: 'id', width: 100 },
-                  { header: 'Name', dataIndex: 'name', width: 280 }
-                ]
-              },
-              {
-                xtype: 'panel',
-                layout: {
-                  type: 'vbox',
-                  align: 'middle',
-                  pack: 'center'
-                },
-                width: 100,
-                height: 150,
-                bodyStyle: 'padding: 10px 5px;',
-                defaults: {
-                  xtype: 'button',
-                  width: 60,
-                  style: 'margin-bottom: 8px;'
-                },
-                items: [
-
-
+                  //  { header: 'Circuit ID', dataIndex: 'CIRCUITID', width: 80 },
+                  { header: 'Name', dataIndex: 'NAME', width: 200 },
+                  { header: 'Service', dataIndex: 'SERVICE', width: 100 },
+                  { header: 'Location', dataIndex: 'LOCATION', width: 140 },
+                  { header: 'Node', dataIndex: 'NODE', width: 140 },
+                  { header: 'Port', dataIndex: 'PORT', width: 80 }
                 ]
               }
             ]
           }
+
         ],
         buttons: [
           {
-            text: 'Save',
-            handler: function () {
-            }
-          }, {
-            text: 'Close',
+            text: 'Cancel',
             handler: function () {
               this.ownerCt.ownerCt.close();
+            }
+          }, {
+            text: 'Save',
+            handler: function () {
             }
           }
         ]
@@ -97,16 +191,31 @@ Ext.onReady(function () {
               if (res.success && res.data) {
                 Ext.getCmp('circuit_field').setValue(res.data.circuit?.NAME || '');
 
+                // populate grid_ser_spl
+                const grid = Ext.getCmp('grid_ser_spl');
+                if (grid) {
+                  const store = grid.getStore();
+                  store.removeAll();
+                  (res.data.values || []).forEach(item => {
+                    store.add(new store.recordType({
+                      CIRCUITID: item.CIRCUITID,
+                      NAME: item.NAME,
+                      SERVICE: item.SERVICE,
+                      LOCATION: item.LOCATION,
+                      NODE: item.NODE,
+                      PORT: item.PORT
+                    }));
+                  });
+                }
               }
             }
           });
         }
 
-
         this.show();
       };
+
 
     }
   });
 });
-
