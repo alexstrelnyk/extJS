@@ -3,11 +3,11 @@ Ext.onReady(function () {
 
   var cir_id = false;
 
-  function createRemoteCombo(name, value) {
+  function createRemoteCombo(name, idValue) {
     return new Ext.form.ComboBox({
       fieldLabel: name.charAt(0) + name.slice(1).toLowerCase(),
-      name: name,
-      value: value,
+      name: name + 'ID',  // сохраняем именно ID
+      value: idValue,     // ID
       store: new Ext.data.JsonStore({
         url: './tools/wizardServiceSplitter/src/index.php',
         baseParams: { action: 'get_' + name.toLowerCase() },
@@ -16,7 +16,7 @@ Ext.onReady(function () {
       }),
       valueField: 'ID',
       displayField: 'NAME',
-      hiddenName: name,
+      hiddenName: name + 'ID',
       mode: 'remote',
       triggerAction: 'all',
       minChars: 2,
@@ -29,8 +29,93 @@ Ext.onReady(function () {
   }
 
 
-
   function openEditWindow(record) {
+    let isChanged = false;
+
+    const saveButton = new Ext.Button({
+      text: 'Save',
+      disabled: true,
+      handler: function () {
+        if (form.getForm().isValid()) {
+          const values = form.getForm().getValues();
+          Ext.Ajax.request({
+            url: './tools/wizardServiceSplitter/src/index.php',
+            params: {
+              action: 'save_ser_spl',
+              circuit_id: record.get('CIRCUITID'),
+              ...values
+            },
+            success: function () {
+              record.set('LOCATION', values.LOCATION);
+              record.set('NODE', values.NODE);
+              record.set('PORT', values.PORT);
+              record.commit();
+              form.ownerCt.close();
+            },
+            failure: function () {
+              Ext.Msg.alert('Error', 'Failed to save');
+            }
+          });
+        }
+      }
+    });
+
+    let nodeCombo, portCombo;
+
+    function createRemoteCombo(name, idValue) {
+      const combo = new Ext.form.ComboBox({
+        fieldLabel: name.charAt(0) + name.slice(1).toLowerCase(),
+        name: name + 'ID',
+        value: idValue,
+        store: new Ext.data.JsonStore({
+          url: './tools/wizardServiceSplitter/src/index.php',
+          baseParams: { action: 'get_' + name.toLowerCase() },
+          root: 'data',
+          fields: ['ID', 'NAME']
+        }),
+        valueField: 'ID',
+        displayField: 'NAME',
+        hiddenName: name + 'ID',
+        mode: 'remote',
+        triggerAction: 'all',
+        minChars: 2,
+        queryDelay: 300,
+        forceSelection: true,
+        typeAhead: false,
+        allowBlank: false,
+        anchor: '95%',
+        listeners: {
+          select: function () {
+            if (!isChanged) {
+              isChanged = true;
+              saveButton.setDisabled(false);
+            }
+
+            if (name === 'LOCATION') {
+              console.log('asd');
+              if (nodeCombo) {
+                nodeCombo.clearValue();
+              }
+              if (portCombo) {
+                portCombo.clearValue();
+              }
+            }
+
+            if (name === 'NODE') {
+              if (portCombo) {
+                portCombo.clearValue();
+              }
+            }
+          }
+        }
+      });
+
+      if (name === 'NODE') nodeCombo = combo;
+      if (name === 'PORT') portCombo = combo;
+
+      return combo;
+    }
+
     const form = new Ext.form.FormPanel({
       labelWidth: 70,
       bodyStyle: 'padding:10px;',
@@ -57,32 +142,7 @@ Ext.onReady(function () {
         createRemoteCombo('PORT', record.get('PORT'))
       ],
       buttons: [
-        {
-          text: 'Save',
-          handler: function () {
-            if (form.getForm().isValid()) {
-              const values = form.getForm().getValues();
-              Ext.Ajax.request({
-                url: './tools/wizardServiceSplitter/src/index.php',
-                params: {
-                  action: 'save_ser_spl',
-                  circuit_id: record.get('CIRCUITID'),
-                  ...values
-                },
-                success: function () {
-                  record.set('LOCATION', values.LOCATION);
-                  record.set('NODE', values.NODE);
-                  record.set('PORT', values.PORT);
-                  record.commit();
-                  form.ownerCt.close();
-                },
-                failure: function () {
-                  Ext.Msg.alert('Error', 'Failed to save');
-                }
-              });
-            }
-          }
-        },
+        saveButton,
         {
           text: 'Cancel',
           handler: function () {
@@ -103,6 +163,8 @@ Ext.onReady(function () {
 
     win.show();
   }
+
+
 
 
 
