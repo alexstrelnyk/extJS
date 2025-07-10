@@ -48,7 +48,7 @@ switch ($action) {
 			n.name as node,
 			n.nodeid,
 			pp.name as port,
-			pp.portid			
+pp.portid			
 			from circuit_o c
 left join location_o l on l.locationid=c.circuit2startlocation
 left join node_o n on n.nodeid=c.circuit2startnode
@@ -64,28 +64,34 @@ and rownum < 3");
 		}
 		break;
 	case 'get_location':
-		$sql = "select l.locationid id, l.name from CRAMER.location_o l
+		$sql = "select distinct(l.name), l.locationid id from CRAMER.location_o l 
 		WHERE rownum < 20 ";
 		if (isset($_REQUEST['query']) && $query = $_REQUEST['query']) {
-			$sql .= "AND (l.locationid LIKE '%" . $query . "%' OR l.name LIKE '%" . $query . "%')";
+			$sql .= "AND l.name LIKE '%" . $query . "%' ";
 		}
 
 		sendJSONFromSQL($con, $sql, false);
 		break;
 	case 'get_node':
-		$sql = "select n.nodeid id, n.name from CRAMER.node_o n
+		$sql = "SELECT n.name, n.nodeid id FROM CRAMER.node_o n
 		WHERE rownum < 20 ";
+		if (isset($_REQUEST['LOCATIONID']) && $locid = $_REQUEST['LOCATIONID']) {
+			$sql .= "AND n.node2location = " . $locid . " ";
+		}
 		if (isset($_REQUEST['query']) && $query = $_REQUEST['query']) {
-			$sql .= "AND (n.nodeid LIKE '%" . $query . "%' OR n.name LIKE '%" . $query . "%')";
+			$sql .= "AND n.name LIKE '%" . $query . "%' ";
 		}
 
 		sendJSONFromSQL($con, $sql, false);
 		break;
 	case 'get_port':
-		$sql = "select p.portid id, p.name from CRAMER.port_o p
+		$sql = "SELECT distinct(p.name), p.portid id FROM CRAMER.port_o p
 		WHERE rownum < 20 ";
+		if (isset($_REQUEST['NODEID']) && $nodeid = $_REQUEST['NODEID']) {
+			$sql .= "AND p.PORT2NODE = " . $nodeid . " ";
+		}
 		if (isset($_REQUEST['query']) && $query = $_REQUEST['query']) {
-			$sql .= "AND (p.portid LIKE '%" . $query . "%' OR p.name LIKE '%" . $query . "%')";
+			$sql .= "AND p.name LIKE '%" . $query . "%' ";
 		}
 
 		sendJSONFromSQL($con, $sql, false);

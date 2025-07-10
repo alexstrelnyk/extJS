@@ -3,31 +3,6 @@ Ext.onReady(function () {
 
   var cir_id = false;
 
-  function createRemoteCombo(name, idValue) {
-    return new Ext.form.ComboBox({
-      fieldLabel: name.charAt(0) + name.slice(1).toLowerCase(),
-      name: name + 'ID',
-      value: idValue,
-      store: new Ext.data.JsonStore({
-        url: './tools/wizardServiceSplitter/src/index.php',
-        baseParams: { action: 'get_' + name.toLowerCase() },
-        root: 'data',
-        fields: ['ID', 'NAME']
-      }),
-      valueField: 'ID',
-      displayField: 'NAME',
-      hiddenName: name + 'ID',
-      mode: 'remote',
-      triggerAction: 'all',
-      minChars: 2,
-      queryDelay: 300,
-      forceSelection: true,
-      typeAhead: false,
-      allowBlank: false,
-      anchor: '95%'
-    });
-  }
-
 
   function openEditWindow(record) {
     let isChanged = false;
@@ -42,6 +17,7 @@ Ext.onReady(function () {
       handler: function () {
         if (form.getForm().isValid()) {
           const values = form.getForm().getValues();
+
           Ext.Ajax.request({
             url: './tools/wizardServiceSplitter/src/index.php',
             params: {
@@ -50,12 +26,13 @@ Ext.onReady(function () {
               ...values
             },
             success: function () {
-              record.set('LOCATION', values.LOCATION);
-              record.set('NODE', values.NODE);
-              record.set('PORT', values.PORT);
+              record.set('LOCATION', locationCombo.getRawValue());
+              record.set('NODE', nodeCombo.getRawValue());
+              record.set('PORT', portCombo.getRawValue());
               record.commit();
               form.ownerCt.close();
             },
+
             failure: function () {
               Ext.Msg.alert('Error', 'Failed to save');
             }
@@ -122,8 +99,10 @@ Ext.onReady(function () {
         combo.setRawValue(displayValue);
       });
 
+      if (name === 'LOCATION') locationCombo = combo;
       if (name === 'NODE') nodeCombo = combo;
       if (name === 'PORT') portCombo = combo;
+
 
       return combo;
     }
