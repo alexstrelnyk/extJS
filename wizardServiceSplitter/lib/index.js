@@ -6,8 +6,8 @@ Ext.onReady(function () {
   function createRemoteCombo(name, idValue) {
     return new Ext.form.ComboBox({
       fieldLabel: name.charAt(0) + name.slice(1).toLowerCase(),
-      name: name + 'ID',  // сохраняем именно ID
-      value: idValue,     // ID
+      name: name + 'ID',
+      value: idValue,
       store: new Ext.data.JsonStore({
         url: './tools/wizardServiceSplitter/src/index.php',
         baseParams: { action: 'get_' + name.toLowerCase() },
@@ -31,6 +31,10 @@ Ext.onReady(function () {
 
   function openEditWindow(record) {
     let isChanged = false;
+
+    let locationId = record.get('LOCATIONID');
+    let nodeId = record.get('NODEID');
+    let portId = record.get('PORTID');
 
     const saveButton = new Ext.Button({
       text: 'Save',
@@ -62,20 +66,24 @@ Ext.onReady(function () {
 
     let nodeCombo, portCombo;
 
-    function createRemoteCombo(name, idValue) {
+    function createRemoteCombo(name, displayValue, idValue) {
+      const storeParams = { action: 'get_' + name.toLowerCase() };
+
+      if (name === 'NODE' && locationId) storeParams.LOCATIONID = locationId;
+      if (name === 'PORT' && nodeId) storeParams.NODEID = nodeId;
+
       const combo = new Ext.form.ComboBox({
         fieldLabel: name.charAt(0) + name.slice(1).toLowerCase(),
         name: name + 'ID',
-        value: idValue,
+        hiddenName: name + 'ID',
         store: new Ext.data.JsonStore({
           url: './tools/wizardServiceSplitter/src/index.php',
-          baseParams: { action: 'get_' + name.toLowerCase() },
+          baseParams: storeParams,
           root: 'data',
           fields: ['ID', 'NAME']
         }),
         valueField: 'ID',
         displayField: 'NAME',
-        hiddenName: name + 'ID',
         mode: 'remote',
         triggerAction: 'all',
         minChars: 2,
@@ -85,29 +93,33 @@ Ext.onReady(function () {
         allowBlank: false,
         anchor: '95%',
         listeners: {
-          select: function () {
+          select: function (combo, rec) {
             if (!isChanged) {
               isChanged = true;
               saveButton.setDisabled(false);
             }
 
             if (name === 'LOCATION') {
-              console.log('asd');
-              if (nodeCombo) {
-                nodeCombo.clearValue();
-              }
-              if (portCombo) {
-                portCombo.clearValue();
-              }
+              locationId = rec.get('ID');
+              if (nodeCombo) nodeCombo.clearValue();
+              if (portCombo) portCombo.clearValue();
             }
 
             if (name === 'NODE') {
-              if (portCombo) {
-                portCombo.clearValue();
-              }
+              nodeId = rec.get('ID');
+              if (portCombo) portCombo.clearValue();
+            }
+
+            if (name === 'PORT') {
+              portId = rec.get('ID');
             }
           }
         }
+      });
+
+      combo.on('render', function () {
+        //    combo.setValue(idValue);           
+        combo.setRawValue(displayValue);
       });
 
       if (name === 'NODE') nodeCombo = combo;
@@ -115,6 +127,8 @@ Ext.onReady(function () {
 
       return combo;
     }
+
+
 
     const form = new Ext.form.FormPanel({
       labelWidth: 70,
@@ -137,9 +151,9 @@ Ext.onReady(function () {
           value: record.get('SERVICE'),
           readOnly: true
         },
-        createRemoteCombo('LOCATION', record.get('LOCATION')),
-        createRemoteCombo('NODE', record.get('NODE')),
-        createRemoteCombo('PORT', record.get('PORT'))
+        createRemoteCombo('LOCATION', record.get('LOCATION'), record.get('LOCATIONID')),
+        createRemoteCombo('NODE', record.get('NODE'), record.get('NODEID')),
+        createRemoteCombo('PORT', record.get('PORT'), record.get('PORTID'))
       ],
       buttons: [
         saveButton,
@@ -253,7 +267,6 @@ Ext.onReady(function () {
               if (res.success && res.data) {
                 Ext.getCmp('circuit_field').setValue(res.data.circuit?.NAME || '');
 
-                // populate grid_ser_spl
                 const grid = Ext.getCmp('grid_ser_spl');
                 if (grid) {
                   const store = grid.getStore();
@@ -264,9 +277,13 @@ Ext.onReady(function () {
                       NAME: item.NAME,
                       SERVICE: item.SERVICE,
                       LOCATION: item.LOCATION,
+                      LOCATIONID: item.LOCATIONID,
                       NODE: item.NODE,
-                      PORT: item.PORT
+                      NODEID: item.NODEID,
+                      PORT: item.PORT,
+                      PORTID: item.PORTID
                     }));
+                    ;
                   });
                 }
               }
