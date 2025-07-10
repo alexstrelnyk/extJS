@@ -11,30 +11,36 @@ Ext.onReady(function () {
     let nodeId = record.get('NODEID');
     let portId = record.get('PORTID');
 
+
     const saveButton = new Ext.Button({
       text: 'Save',
       disabled: true,
       handler: function () {
         if (form.getForm().isValid()) {
           const values = form.getForm().getValues();
-
           Ext.Ajax.request({
             url: './tools/wizardServiceSplitter/src/index.php',
             params: {
               action: 'save_ser_spl',
               circuit_id: record.get('CIRCUITID'),
-              ...values
+              ...values,
+              CIRCUIT2CIRCUITTYPE: record.get('CIRCUIT2CIRCUITTYPE'),
+              CIRCUIT2ENDLOCATION: record.get('CIRCUIT2ENDLOCATION'),
+              CIRCUIT2ENDNODE: record.get('CIRCUIT2ENDNODE'),
+              CIRCUIT2ENDPORT: record.get('CIRCUIT2ENDPORT')
             },
-            success: function () {
-              record.set('LOCATION', locationCombo.getRawValue());
-              record.set('NODE', nodeCombo.getRawValue());
-              record.set('PORT', portCombo.getRawValue());
-              record.commit();
-              form.ownerCt.close();
-            },
+            success: function (response) {
 
-            failure: function () {
-              Ext.Msg.alert('Error', 'Failed to save');
+              const res = Ext.decode(response.responseText);
+              if (res.success) {
+                record.set('LOCATION', locationCombo.getRawValue());
+                record.set('NODE', nodeCombo.getRawValue());
+                record.set('PORT', portCombo.getRawValue());
+                record.commit();
+                form.ownerCt.close();
+              } else {
+                Ext.Msg.alert('Error', res.message);
+              }
             }
           });
         }
@@ -78,14 +84,30 @@ Ext.onReady(function () {
 
             if (name === 'LOCATION') {
               locationId = rec.get('ID');
-              if (nodeCombo) nodeCombo.clearValue();
-              if (portCombo) portCombo.clearValue();
+
+              if (nodeCombo) {
+                nodeCombo.clearValue();
+                nodeCombo.store.baseParams.LOCATIONID = locationId;
+                nodeCombo.store.reload();
+              }
+
+              if (portCombo) {
+                portCombo.clearValue();
+                portCombo.store.baseParams.NODEID = null;
+                portCombo.store.removeAll();
+              }
             }
 
             if (name === 'NODE') {
               nodeId = rec.get('ID');
-              if (portCombo) portCombo.clearValue();
+
+              if (portCombo) {
+                portCombo.clearValue();
+                portCombo.store.baseParams.NODEID = nodeId;
+                portCombo.store.reload();
+              }
             }
+
 
             if (name === 'PORT') {
               portId = rec.get('ID');
@@ -98,6 +120,7 @@ Ext.onReady(function () {
         //    combo.setValue(idValue);           
         combo.setRawValue(displayValue);
       });
+
 
       if (name === 'LOCATION') locationCombo = combo;
       if (name === 'NODE') nodeCombo = combo;
@@ -260,7 +283,11 @@ Ext.onReady(function () {
                       NODE: item.NODE,
                       NODEID: item.NODEID,
                       PORT: item.PORT,
-                      PORTID: item.PORTID
+                      PORTID: item.PORTID,
+                      CIRCUIT2CIRCUITTYPE: item.CIRCUIT2CIRCUITTYPE,
+                      CIRCUIT2ENDLOCATION: item.CIRCUIT2ENDLOCATION,
+                      CIRCUIT2ENDNODE: item.CIRCUIT2ENDNODE,
+                      CIRCUIT2ENDPORT: item.CIRCUIT2ENDPORT
                     }));
                     ;
                   });

@@ -48,7 +48,11 @@ switch ($action) {
 			n.name as node,
 			n.nodeid,
 			pp.name as port,
-pp.portid			
+pp.portid,
+c.circuit2circuittype, 
+c.circuit2endlocation, 
+c.circuit2endnode,			
+c.circuit2endport 
 			from circuit_o c
 left join location_o l on l.locationid=c.circuit2startlocation
 left join node_o n on n.nodeid=c.circuit2startnode
@@ -97,102 +101,46 @@ and rownum < 3");
 		sendJSONFromSQL($con, $sql, false);
 		break;
 	case 'save_ser_spl':
-		$circuitTypeId = false;
-		$package_name = false;
-		$create_without_def = false;
-		$fields = "";
-		if (isset($_REQUEST['circuitTypeId']) && $circuitTypeId = $_REQUEST['circuitTypeId']) {
-			$package_name_sql = "
-	select t.circuittype2porttype from CRAMER.circuittype_m t 
-	where t.CIRCUITTYPEID = $circuitTypeId";
-			if ($circuit_row = getSQLData($con, $package_name_sql)) {
-				if ($circuit_row['CIRCUITTYPE2PORTTYPE']) {
-					$create_without_def = true;
-				}
-			}
-		}
-
 		$sql = "
 		DECLARE
     o_errorcode            NUMBER;
     o_errortext            VARCHAR2(4000);
 	";
-		if (isset($_REQUEST['name']) && $query = $_REQUEST['name']) {
+		if (isset($_REQUEST['NAME']) && $query = $_REQUEST['NAME']) {
 			$sql .= "i_circuitname   VARCHAR2(200) := '" . $query . "'; 
 			";
 		}
-		if (isset($_REQUEST['LOCATION']) && $query = $_REQUEST['LOCATION']) {
-			$sql .= "i_startlocationid   NUMBER := " . $query . "; 
+		if (isset($_REQUEST['LOCATIONID']) && $query = $_REQUEST['LOCATIONID']) {
+			$sql .= "i_startlocid   NUMBER := " . $query . "; 
 			";
 		}
-		if (isset($_REQUEST['circuitId']) && $query = $_REQUEST['circuitId']) {
+		if (isset($_REQUEST['circuit_id']) && $query = $_REQUEST['circuit_id']) {
 			$sql .= "i_circuitid   NUMBER := " . $query . "; 
 			";
 		}
-		if (isset($_REQUEST['startNodeId']) && $query = $_REQUEST['startNodeId']) {
+		if (isset($_REQUEST['NODEID']) && $query = $_REQUEST['NODEID']) {
 			$sql .= "i_startnodeid   NUMBER := " . $query . "; 
 			";
 		}
-		if (isset($_REQUEST['startPortId']) && $query = $_REQUEST['startPortId']) {
+		if (isset($_REQUEST['PORTID']) && $query = $_REQUEST['PORTID']) {
 			$sql .= "i_startportid   NUMBER := " . $query . "; 
 			";
 		}
-		if (isset($_REQUEST['endLocId']) && $query = $_REQUEST['endLocId']) {
-			$sql .= "i_endlocationid   NUMBER := " . $query . "; 
+		if (isset($_REQUEST['CIRCUIT2CIRCUITTYPE']) && $query = $_REQUEST['CIRCUIT2CIRCUITTYPE']) {
+			$sql .= "i_circuittypeid   NUMBER := " . $query . "; 
 			";
 		}
-		if (isset($_REQUEST['endNodeId']) && $query = $_REQUEST['endNodeId']) {
+		if (isset($_REQUEST['CIRCUIT2ENDLOCATION']) && $query = $_REQUEST['CIRCUIT2ENDLOCATION']) {
+			$sql .= "i_endlocid   NUMBER := " . $query . "; 
+			";
+		}
+		if (isset($_REQUEST['CIRCUIT2ENDNODE']) && $query = $_REQUEST['CIRCUIT2ENDNODE']) {
 			$sql .= "i_endnodeid   NUMBER := " . $query . "; 
 			";
 		}
-		if (isset($_REQUEST['endPortId']) && $query = $_REQUEST['endPortId']) {
+		if (isset($_REQUEST['CIRCUIT2ENDPORT']) && $query = $_REQUEST['CIRCUIT2ENDPORT']) {
 			$sql .= "i_endportid   NUMBER := " . $query . "; 
 			";
-		}
-		if (!$create_without_def && isset($_REQUEST['circuitdef']) && $query = $_REQUEST['circuitdef']) {
-			$sql .= "i_circuitdefid   NUMBER := " . $query . "; 
-			";
-		}
-		if (isset($_REQUEST['bandwidthId']) && $query = $_REQUEST['bandwidthId']) {
-			$sql .= "i_bandwidthid   NUMBER := " . $query . "; 
-			";
-		}
-		if ($circuitTypeId) {
-			$sql .= "i_circuittypeid   NUMBER := " . $circuitTypeId . "; 
-			";
-		}
-
-		if ($create_without_def) {
-			$package_name = "SETDATACIRCUITDETAILS";
-			$fields = "
-o_errorcode, 
-o_errortext, 
-i_circuitid, 
-i_circuitname, 
-i_circuittypeid, 
-i_startlocid, 
-i_endlocid, 
-i_startnodeid, 
-i_endnodeid, 
-i_startportid, 
-i_endportid";
-		} else {
-			$package_name = "SETCIRCUITDETAILS";
-			$fields = "
-o_errorcode, 
-o_errortext, 
-i_circuitid, 
-i_startlocationid, 
-i_startnodeid, 
-i_startportid, 
-i_endlocationid, 
-i_endnodeid, 
-i_endportid, 
-i_circuitname, 
-i_circuittypeid, 
-i_bandwidthid, 
-i_circuitdefid
-";
 		}
 
 		$sql .= "
@@ -201,8 +149,18 @@ BEGIN
 
   CRAMER.getsession();
   
-  PKGCIRCUIT.$package_name(
-    $fields
+  PKGCIRCUIT.SETDATACIRCUITDETAILS(
+    o_errorcode, 
+	o_errortext, 
+	i_circuitid, 
+	i_circuitname, 
+	i_circuittypeid, 
+	i_startlocid, 
+	i_endlocid, 
+	i_startnodeid, 
+	i_endnodeid, 
+	i_startportid, 
+	i_endportid
   );
 
   IF o_errorcode != 0 THEN
