@@ -116,10 +116,11 @@ Ext.onReady(function () {
         }
       });
 
-      combo.on('render', function () {
-        //    combo.setValue(idValue);           
-        combo.setRawValue(displayValue);
+      combo.on('afterrender', function () {
+        if (idValue) combo.setValue(idValue);
+        if (displayValue) combo.setRawValue(displayValue);
       });
+
 
 
       if (name === 'LOCATION') locationCombo = combo;
