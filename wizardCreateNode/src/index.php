@@ -36,8 +36,7 @@ function getSQLData($con, $sql, $get_single = false)
 
 switch ($action) {
 	case 'get_data':
-		if (isset($_REQUEST['id']) && $cir_id = $_REQUEST['id']) {
-			$ar['values'] = getSQLData($con, "
+		$ar['values'] = getSQLData($con, "
 select 
 n.name nname, 
 n.node2nodetype nodetype, 
@@ -47,11 +46,10 @@ l.name lname,
 n.notes comments 
 from CRAMER.node_o n
 JOIN CRAMER.location_o l ON l.locationid = n.node2location
-and rownum < 3");
-			exit(json_encode(array('success' => true, 'data' => $ar)));
-		} else {
-			exit(json_encode(array('success' => false, 'data' => [])));
-		}
+and rownum < 20
+ORDER BY n.nodeid DESC
+");
+		exit(json_encode(array('success' => true, 'data' => $ar)));
 		break;
 	case 'get_location':
 		$sql = "select distinct(l.name), l.locationid id from CRAMER.location_o l 
@@ -74,74 +72,51 @@ and rownum < 3");
 
 		sendJSONFromSQL($con, $sql, false);
 		break;
-	case 'get_port':
-		$sql = "SELECT distinct(p.name), p.portid id FROM CRAMER.port_o p
+	case 'get_node_types':
+		$sql = "SELECT nt.nodetypeid id, nt.name from CRAMER.NODETYPE_M nt 
 		WHERE rownum < 20 ";
-		if (isset($_REQUEST['NODEID']) && $nodeid = $_REQUEST['NODEID']) {
-			$sql .= "AND p.PORT2NODE = " . $nodeid . " ";
-		}
 		if (isset($_REQUEST['query']) && $query = $_REQUEST['query']) {
-			$sql .= "AND p.name LIKE '%" . $query . "%' ";
+			$sql .= "AND nt.name LIKE '%" . $query . "%' ";
 		}
 
 		sendJSONFromSQL($con, $sql, false);
 		break;
-	case 'save_ser_spl':
-		/*
-		$create_without_def = false;
-		if (isset($_REQUEST['CIRCUIT2CIRCUITTYPE']) && $circuitTypeId = $_REQUEST['CIRCUIT2CIRCUITTYPE']) {
-			$package_name_sql = "
-	select t.circuittype2porttype from CRAMER.circuittype_m t 
-	where t.CIRCUITTYPEID = $circuitTypeId";
-			if ($circuit_row = getSQLData($con, $package_name_sql)){
-				if ($circuit_row['CIRCUITTYPE2PORTTYPE']) {
-					$create_without_def = true;
-				}
-			}
-
+	case 'get_subtypes':
+		$sql = "select DISTINCT(n.subtype) name from CRAMER.node_o n
+		WHERE rownum < 200 ";
+		if (isset($_REQUEST['query']) && $query = $_REQUEST['query']) {
+			$sql .= "AND n.subtype LIKE '%" . $query . "%' ";
 		}
-		exit($create_without_def);
-		*/
+
+		sendJSONFromSQL($con, $sql, false);
+		break;
+	case 'get_node_defs':
+		$sql = "SELECT nd.nodedefid id, nd.name from CRAMER.NODEDEF_M nd 
+		WHERE rownum < 20 ";
+		if (isset($_REQUEST['query']) && $query = $_REQUEST['query']) {
+			$sql .= "AND nd.name LIKE '%" . $query . "%' ";
+		}
+
+		sendJSONFromSQL($con, $sql, false);
+		break;
+	case 'save_node':
 
 		$sql = "
 		DECLARE
     o_errorcode            NUMBER;
     o_errortext            VARCHAR2(4000);
+    o_nodeid            NUMBER;
 	";
 		if (isset($_REQUEST['NAME']) && $query = $_REQUEST['NAME']) {
-			$sql .= "i_circuitname   VARCHAR2(200) := '" . $query . "'; 
+			$sql .= "i_name   VARCHAR2(200) := '" . $query . "'; 
 			";
 		}
-		if (isset($_REQUEST['LOCATIONID']) && $query = $_REQUEST['LOCATIONID']) {
-			$sql .= "i_startlocid   NUMBER := " . $query . "; 
+		if (isset($_REQUEST['NODEDEF']) && $query = $_REQUEST['NODEDEF']) {
+			$sql .= "i_node2nodedef   NUMBER := " . $query . "; 
 			";
 		}
-		if (isset($_REQUEST['circuit_id']) && $query = $_REQUEST['circuit_id']) {
-			$sql .= "i_circuitid   NUMBER := " . $query . "; 
-			";
-		}
-		if (isset($_REQUEST['NODEID']) && $query = $_REQUEST['NODEID']) {
-			$sql .= "i_startnodeid   NUMBER := " . $query . "; 
-			";
-		}
-		if (isset($_REQUEST['PORTID']) && $query = $_REQUEST['PORTID']) {
-			$sql .= "i_startportid   NUMBER := " . $query . "; 
-			";
-		}
-		if (isset($_REQUEST['CIRCUIT2CIRCUITTYPE']) && $query = $_REQUEST['CIRCUIT2CIRCUITTYPE']) {
-			$sql .= "i_circuittypeid   NUMBER := " . $query . "; 
-			";
-		}
-		if (isset($_REQUEST['CIRCUIT2ENDLOCATION']) && $query = $_REQUEST['CIRCUIT2ENDLOCATION']) {
-			$sql .= "i_endlocid   NUMBER := " . $query . "; 
-			";
-		}
-		if (isset($_REQUEST['CIRCUIT2ENDNODE']) && $query = $_REQUEST['CIRCUIT2ENDNODE']) {
-			$sql .= "i_endnodeid   NUMBER := " . $query . "; 
-			";
-		}
-		if (isset($_REQUEST['CIRCUIT2ENDPORT']) && $query = $_REQUEST['CIRCUIT2ENDPORT']) {
-			$sql .= "i_endportid   NUMBER := " . $query . "; 
+		if (isset($_REQUEST['LNAME']) && $query = $_REQUEST['LNAME']) {
+			$sql .= "i_node2location   NUMBER := " . $query . "; 
 			";
 		}
 
@@ -151,25 +126,19 @@ BEGIN
 
   CRAMER.getsession();
   
-  PKGCIRCUIT.SETDATACIRCUITDETAILS(
+  pkgnode.createnode(
 	o_errorcode, 
 	o_errortext, 
-	i_circuitid, 
-	i_circuitname, 
-	i_circuittypeid, 
-	i_startlocid, 
-	i_endlocid, 
-	i_startnodeid, 
-	i_endnodeid, 
-	i_startportid, 
-	i_endportid
+	o_nodeid, 
+	i_name, 
+	i_node2nodedef, 
+	i_node2location
   );
 
   IF o_errorcode != 0 THEN
     RAISE_APPLICATION_ERROR(-20001, 'Package Error: ' || o_errortext);
   END IF;
 
-  :CIRID := i_circuitid;
   :ERRCODE := o_errorcode;
   :ERRTEXT := o_errortext;
 
@@ -183,7 +152,6 @@ END;
 
 		$con = oci_connect($pcon['login'], $pcon['pass'], $pcon['param']);
 		$st = oci_parse($con, $sql);
-		oci_bind_by_name($st, ':CIRID', $circuit_id, 10);
 		oci_bind_by_name($st, ':ERRCODE', $errorcode, 10);
 		oci_bind_by_name($st, ':ERRTEXT', $errortext, 4000);
 
@@ -200,14 +168,8 @@ END;
 			exit;
 		}
 
-		if (empty($circuit_id)) {
-			echo json_encode(['success' => false, 'message' => 'Error: New circuit ID is empty.']);
-			oci_rollback($con);
-			exit;
-		}
-
 		oci_commit($con);
-		echo json_encode(['success' => true, 'data' => ['circuit_id' => $circuit_id]]);
+		echo json_encode(['success' => true, 'data' => []]);
 
 		break;
 }
