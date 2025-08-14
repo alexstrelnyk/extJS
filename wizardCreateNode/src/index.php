@@ -36,7 +36,6 @@ function getSQLData($con, $sql, $get_single = false)
 
 function addAttributes($db_cfg, $obj_id, $name, $value)
 {
-	//	echo __FILE__.' '.__LINE__.'<pre>';print_r($obj_id.$name.$value).'</pre>';die;
 	$sql = "
 		DECLARE
     o_errorcode            NUMBER;
@@ -77,10 +76,6 @@ END;
 
 ";
 
-	//	exit($sql);
-
-	//	echo __FILE__.' '.__LINE__.'<pre>';print_r($db_cfg).'</pre>';die;
-
 	$pcon = $db_cfg['cramer_admin'];
 
 	$con = oci_connect($pcon['login'], $pcon['pass'], $pcon['param']);
@@ -103,7 +98,6 @@ END;
 	}
 
 	oci_commit($con);
-	//	exit;
 }
 
 switch ($action) {
@@ -159,7 +153,6 @@ switch ($action) {
 		sendJSONFromSQL($con, $sql, false);
 		break;
 	case 'save_node':
-		//	addAttributes($db_cfg, '3458805', 'NOTES', 'test comment');
 		$sql = "
 		DECLARE
     o_errorcode            NUMBER;
@@ -206,8 +199,6 @@ END;
 
 ";
 
-		//	exit($sql);
-
 		$pcon = $db_cfg['cramer_admin'];
 
 		$con = oci_connect($pcon['login'], $pcon['pass'], $pcon['param']);
@@ -231,7 +222,6 @@ END;
 		}
 
 		addAttributes($db_cfg, $node_id, 'NOTES', $_REQUEST['COMMENTS']);
-		//	exit();
 
 		oci_commit($con);
 		echo json_encode(['success' => true, 'data' => []]);
