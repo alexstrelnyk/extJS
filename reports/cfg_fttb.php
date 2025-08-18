@@ -1,5 +1,160 @@
 <?
+
+function parseColorColumns($col, $label = false)
+{
+    if (!$label) {
+        $label = explode('.', $col)[1];
+    }
+    $style = 'padding: 5px;height: 13px;';
+    $res = "CASE 
+		WHEN k.severity = 5 THEN '<div style=''" . $style . "background-color: #f5abab''>' || TO_CHAR($col) || '</div>'
+		WHEN k.severity = 4 THEN '<div style=''" . $style . "background-color: #f5c390''>' || TO_CHAR($col) || '</div>'
+		WHEN k.severity = 3 THEN '<div style=''" . $style . "background-color: #f1f5b8''>' || TO_CHAR($col) || '</div>'
+		WHEN k.severity = 2 THEN '<div style=''" . $style . "background-color: #b8c1f5''>' || TO_CHAR($col) || '</div>'
+		WHEN k.severity = 1 THEN '<div style=''" . $style . "background-color: #d3b5f7''>' || TO_CHAR($col) || '</div>'
+		WHEN k.severity = 0 THEN '<div style=''" . $style . "background-color: #b2eda6''>' || TO_CHAR($col) || '</div>'
+		ELSE TO_CHAR(k.severity)
+	END AS $label";
+
+    return $res;
+}
+
 $cfg = array(
+    'CRAMER_SITES_STATUS_REPORT' => array(
+        'css' => array('./css/common.css'),
+        'template' => "<br>
+    			<center><b>Sites status report</b></center>
+    			<br>
+                        <table id=form border=0 align=center>
+                        <tr>
+							<td>Область: </td><td> <div id=pCity ksType=combobox></div> </td>
+                        </tr>
+                        <tr>
+							<td>Cайт: </td><td> <div id=pSite ksType=combobox></div> </td>
+                        </tr>
+                        <tr>
+                            <td>Проблема: </td><td> <div id=problem ksType=combobox></div> </td>
+                        </tr>
+                        <tr>
+                            <td>Severity: </td><td> <div id=severity ksType=combobox></div> </td>
+                        </tr>
+                        <tr>
+                            <td align=right colspan=4> <div id=b_exec ksType=button></div> </td>
+                        </tr>
+                    </table>
+            <br>
+            <center><div id=mainTable ksType=table table_style=js></div></center>
+            ",
+        'ext' => "document.loadCfg['autoLoad'] = false;
+                 document.ext['mainTable']={viewConfig: { columns:[{ header:'NODE', dataIndex:'NODE', width:150}], forceFit : true}};
+        ",
+        'combo' => array(
+            'pCity' => array(
+                'db' => 'cramer_admin',
+                'sql' => "select province id, fullname as name from location_o where name LIKE '%obla%'
+                        	union select null, 'All' from dual
+                    		order by name"
+            ),
+            'pSite' => array(
+                'db' => 'reporter',
+                'sql' => "select n.name as id,n.name from mv_cramer_node n where n.type like 'RBS%'
+AND ROWNUM < 20
+ORDER BY n.name
+"
+            ),
+            'problem' => array(
+                'db' => 'cramer_admin',
+                'sql' => "
+					SELECT 1 AS id, 'сайт не працює' AS name FROM dual
+					UNION ALL SELECT 2, 'проблема з живленням' FROM dual
+					UNION ALL SELECT 3, 'проблема з температурою' FROM dual
+					UNION ALL SELECT 4, 'працює генератор' FROM dual
+				"
+            ),
+            'severity' => array(
+                'db' => 'cramer_admin',
+                'sql' => "
+					SELECT 
+						LEVEL - 1 AS id,
+						TO_CHAR(LEVEL - 1) AS name
+					FROM dual
+					CONNECT BY LEVEL <= 6
+					ORDER BY id
+				"
+            ),
+
+        ),
+        'table' => array(
+            'mainTable' => array(
+                'show_header' => true,
+                'db' => 'reporter',
+                'sql' => "
+SELECT 
+	" . parseColorColumns('k.severity') . ",
+	" . parseColorColumns('l.region') . ",
+	" . parseColorColumns('l.name', 'location') . ",
+	" . parseColorColumns('NVL(k.nodealias, k.node)', 'node') . ",
+	" . parseColorColumns('k.specificproblem') . ",
+	" . parseColorColumns('k.summary') . ",
+	" . parseColorColumns('k.firstoccurrence') . ",
+	" . parseColorColumns('k.ttid') . ",
+	" . parseColorColumns('k.physicalcard') . ",
+	" . parseColorColumns('at.CONVERSION', 'alarmtype') . ",
+	" . parseColorColumns('ac.CONVERSION', 'alarmcode') . ",
+	" . parseColorColumns('ar.CONVERSION', 'alarmrange') . "
+
+FROM REPORTER_STATUS4CMS k
+JOIN mv_cramer_location l 
+    ON k.location = l.name
+LEFT JOIN reporter_conversions at 
+    ON at.value = k.alarmtype AND LOWER(at.column_name) = 'alarmtype'
+LEFT JOIN reporter_conversions ac 
+    ON ac.value = k.alarmtype AND LOWER(ac.column_name) = 'alarmcode'
+LEFT JOIN reporter_conversions ar 
+    ON ar.value = k.alarmtype AND LOWER(ar.column_name) = 'alarmrange'
+WHERE 
+    (l.region = '<pCity>' OR '<pCity>' IS NULL OR '<pCity>' = '') 
+    AND (k.nodealias = '<pSite>' OR '<pSite>' IS NULL OR '<pSite>' = '')
+    AND (k.severity = '<severity>' OR '<severity>' IS NULL OR '<severity>' = '')
+    AND (
+        '<problem>' IS NULL OR '<problem>' = '' OR '<problem>' = '0'
+        OR (
+            '<problem>' = '1' 
+            AND k.specificproblem IN (
+                'SITE ABIS CONTROL LINK BROKEN',
+                'LINK BETWEEN OMM AND NE BROKEN',
+                'NE Is Disconnected',
+                'CSL Fault'
+            )
+        )
+        OR (
+            '<problem>' = '2' 
+            AND k.specificproblem = 'BTS EXTERNAL FAULT'
+            AND (
+                LOWER(k.summary) LIKE 'mains%' OR
+                LOWER(k.summary) LIKE 'high%' OR
+                LOWER(k.summary) LIKE 'rectif%' OR
+                LOWER(k.summary) LIKE 'load%'
+            )
+        )
+        OR (
+            '<problem>' = '3' 
+            AND k.specificproblem LIKE 'TP%'
+        )
+        OR (
+            '<problem>' = '4' 
+            AND (
+                k.specificproblem LIKE 'DGA%' 
+                OR k.summary LIKE 'DIESEL%'
+            )
+        )
+    )
+
+	--FETCH FIRST 10 ROWS ONLY
+					"
+            )
+        )
+    ),
     'CRAMER_FREE_SPLITER_PORT_SEARCH' => array(
         'css' => array('./css/common.css'),
         'template' => "<br>
@@ -94,13 +249,10 @@ $cfg = array(
 
 					HAVING 
 					  COUNT(DISTINCT c.circuitid) > 0
-					  AND (
-						'<ports>' IS NULL OR '<ports>' = '' OR '<ports>' = '0'
-						OR COUNT(DISTINCT p.portid) < TO_NUMBER('<ports>')
-					  )
+					  AND COUNT(DISTINCT p.portid) <= COUNT(DISTINCT s.serviceid) + TO_NUMBER(nvl('<ports>',0))
 
 					ORDER BY services_count DESC
-					FETCH FIRST 100 ROWS ONLY
+					--FETCH FIRST 100 ROWS ONLY
 					"
             )
         )
