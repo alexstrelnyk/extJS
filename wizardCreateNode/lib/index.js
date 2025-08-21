@@ -39,28 +39,6 @@ Ext.onReady(function () {
 
 
 
-    const nodeTypeCombo = new Ext.form.ComboBox({
-      fieldLabel: 'Node Type',
-      name: 'NODETYPE',
-      hiddenName: 'NODETYPE',
-      store: new Ext.data.JsonStore({
-        url: './tools/wizardCreateNode/src/index.php',
-        baseParams: { action: 'get_node_types' },
-        root: 'data',
-        fields: ['ID', 'NAME']
-      }),
-      valueField: 'ID',
-      displayField: 'NAME',
-      mode: 'remote',
-      triggerAction: 'all',
-      minChars: 2,
-      queryDelay: 300,
-      forceSelection: true,
-      typeAhead: false,
-      allowBlank: false,
-      anchor: '95%'
-    });
-
     const nodeDefStore = new Ext.data.JsonStore({
       url: './tools/wizardCreateNode/src/index.php',
       baseParams: { action: 'get_node_defs' },
@@ -84,18 +62,49 @@ Ext.onReady(function () {
       allowBlank: false,
       anchor: '95%',
       listeners: {
-        expand: function (combo) {
-          const nodeTypeVal = nodeTypeCombo.getValue();
-          if (!nodeTypeVal) {
-            Ext.Msg.alert('Warning', 'Please select Node Type first.');
-            combo.collapse();
-            return;
+        beforequery: function (qe) {
+          const nodeTypeValue = nodeTypeCombo.getValue();
+          if (!nodeTypeValue) {
+            Ext.Msg.alert('Validation', 'Please select Node Type first.');
+            qe.cancel = true;
+            return false;
           }
-          combo.store.baseParams.node_type = nodeTypeVal;
-          combo.store.load();
+          nodeDefCombo.store.baseParams.node_type = nodeTypeValue;
         }
       }
     });
+
+
+    const nodeTypeCombo = new Ext.form.ComboBox({
+      fieldLabel: 'Node Type',
+      name: 'NODETYPE',
+      hiddenName: 'NODETYPE',
+      store: new Ext.data.JsonStore({
+        url: './tools/wizardCreateNode/src/index.php',
+        baseParams: { action: 'get_node_types' },
+        root: 'data',
+        fields: ['ID', 'NAME']
+      }),
+      valueField: 'ID',
+      displayField: 'NAME',
+      mode: 'remote',
+      triggerAction: 'all',
+      minChars: 2,
+      queryDelay: 300,
+      forceSelection: true,
+      typeAhead: false,
+      allowBlank: false,
+      anchor: '95%',
+      listeners: {
+        select: function (combo, record) {
+          nodeDefCombo.clearValue();
+          nodeDefCombo.store.removeAll();
+          nodeDefCombo.store.baseParams.node_type = record.get('ID');
+        }
+      }
+
+    });
+
 
 
     const subTypeCombo = new Ext.form.ComboBox({
@@ -187,11 +196,6 @@ Ext.onReady(function () {
 
     win.show();
   }
-
-
-
-
-
 
   window.wizard_create_node = Ext.extend(Ext.Window, {
     constructor: function (cfg) {
